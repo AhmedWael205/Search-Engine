@@ -25,16 +25,22 @@ public class Crawler implements Runnable{
 	private int maxVisited = 200;
 	private int maxLinkfromSite = 50;
 	private MongoDBAdapter DBAdapeter;
+	private Object VisitedLock;
+	private Object UnvisitedLock;
+	private Object RobotLock;
 	public void run() {
 		
 		this.startCrawl(DBAdapeter);
 	}
 	
-	public Crawler(MongoDBAdapter DBAdapeter) {
+	public Crawler(MongoDBAdapter DBAdapeter, Object VisitedLock,Object UnvisitedLock, Object RobotLock) {
 		this.DBAdapeter = DBAdapeter;
+		this.VisitedLock = VisitedLock;
+		this.UnvisitedLock = UnvisitedLock;
+		this.RobotLock = RobotLock;
 	}
 	
-	public boolean addRobots(String URI,MongoDBAdapter DBAdapeter) {
+	public boolean addRobots(String URI,MongoDBAdapter DBAdapeter,Object RobotLock) {
 			String Robots = URI+"/robots.txt/";
 			String pattern = "Disallow: (.*)";
 			Pattern r = Pattern.compile(pattern);
@@ -66,7 +72,7 @@ public class Crawler implements Runnable{
 		        return false;
 		    }
 		if(pathsRegex.size() != 0)
-			DBAdapeter.addRobots(pathsRegex);
+			DBAdapeter.addRobots(pathsRegex,RobotLock);
 		return true;
 	}
 	
@@ -74,16 +80,18 @@ public class Crawler implements Runnable{
 	
 	 public void startCrawl(MongoDBAdapter DBAdapeter) {
 
-		 	List<String> URIs = new ArrayList<String>();
+//		 	List<String> URIs = new ArrayList<String>();
+		 	Set<String> URISet = new HashSet<String>();
+		 	
 		 	while(DBAdapeter.visitedCount() <= maxVisited)
             try {
             	String URL = "false";
-            	synchronized (DBAdapeter) {
+            	synchronized (UnvisitedLock) {
             		URL = DBAdapeter.getUnvisited();
             	}
             	if (URL != "false") {
-	            	this.addRobots(URL, DBAdapeter);
-	            	if(DBAdapeter.inRobots(URL))
+	            	this.addRobots(URL, DBAdapeter,RobotLock);
+	            	if(DBAdapeter.inRobots(URL,RobotLock))
 	            		continue;
 	                //2. Fetch the HTML code
 	            	
@@ -93,7 +101,7 @@ public class Crawler implements Runnable{
 	            	String Title = document.select("title").toString();
 	            	String Text = document.text().toString();
 	            	
-	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text)) {
+	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text,VisitedLock)) {
 		                //3. Parse the HTML to extract links to other URLs
 		            	
 		                Elements linksOnPage = document.select("a[href]");
@@ -101,18 +109,16 @@ public class Crawler implements Runnable{
 		                //5. For each extracted URL... go back to Step 4.
 		                int count = 0 ;
 		                for (Element page : linksOnPage) {
-		                	String URI = page.attr("abs:href"); 	
-		                	URIs.add(URI);
-		                	count++;
+		                	String URI = page.attr("abs:href");
+		                	URISet.add(URI); 
+		                	if(URISet.size() - count == 1) {
+		                		synchronized (UnvisitedLock) {
+		                			DBAdapeter.addUnvisited(URI);
+		                		}
+		                		count++;
+		                	}
 		                	if(count >= maxLinkfromSite) 
 		                		break;
-		                }
-		                if (URIs.size() != 0)
-		                {
-		                	Set<String> URISet = new HashSet<String>(); 
-		                    for (String x : URIs) 
-		                    	URISet.add(x); 
-		                	DBAdapeter.addManyUnvisited(URISet);
 		                }
 	            	}
             	}
@@ -126,11 +132,15 @@ public class Crawler implements Runnable{
 		boolean DropTable = false;
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);
 		DBAdapeter.init(DropTable);
-		int ThreadNumbers = 100;
+		int ThreadNumbers = 50;
+		Object VisitedLock = new Object();
+		Object UnvisitedLock = new Object();
+		Object RobotLock = new Object();
+		
 		
 		Thread myThreads[] = new Thread[ThreadNumbers];
 		for (int j = 0; j < ThreadNumbers; j++) {
-		    myThreads[j] = new Thread(new Crawler(DBAdapeter));
+		    myThreads[j] = new Thread(new Crawler(DBAdapeter,VisitedLock,UnvisitedLock,RobotLock));
 		    myThreads[j].start();
 		}
 		for (int j = 0; j < ThreadNumbers; j++) {
