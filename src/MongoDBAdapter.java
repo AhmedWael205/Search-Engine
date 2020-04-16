@@ -26,6 +26,8 @@ public class MongoDBAdapter {
 	private MongoCollection<Document> UnvisitedCollection;
 	private MongoCollection<Document> VisitedCollection;
 	private MongoCollection<Document> RobotCollection;
+	private MongoCollection<Document> WordsCollection;
+	private MongoCollection<Document> URLsCollection;
 	private MongoClientURI uri = new MongoClientURI( "mongodb+srv://CrawlerDB:Crawler123@crawlercluster-kgwg6.mongodb.net/Test?retryWrites=true&w=majority"  ); ;
 //	private MongoClient mongoClient = new MongoClient(uri);
 //	private MongoDatabase database = mongoClient.getDatabase("Test");
@@ -51,7 +53,7 @@ public class MongoDBAdapter {
 			  
 			  
 		      System.out.println("Database Connected Successfully ...");
-		      
+
 		      if(DropTables) {
 			      // Deleting Old Collections if Exists
 			      MongoCollection<Document> OLDUnvisited = database.getCollection("Unvisited");
@@ -60,16 +62,24 @@ public class MongoDBAdapter {
 			      OLDVisited.drop();
 			      MongoCollection<Document> OLDRobot = database.getCollection("Robot");
 			      OLDRobot.drop();
-			      
+				  MongoCollection<Document> OLDWord = database.getCollection("Words");
+				  OLDWord.drop();
+				  MongoCollection<Document> OLDURLs = database.getCollection("URLs");
+				  OLDURLs.drop();
+
 			      // Creating a new Collections
 			      database.createCollection("Unvisited");
 			      database.createCollection("Visited");
 			      database.createCollection("Robot");
+				  database.createCollection("Words");
+				  database.createCollection("URLs");
 		      }
-		      
+
 		      UnvisitedCollection = database.getCollection("Unvisited");
 		      VisitedCollection = database.getCollection("Visited");
 		      RobotCollection = database.getCollection("Robot");
+		      WordsCollection = database.getCollection("Words");
+		      URLsCollection = database.getCollection("URLs");
 		      
 		      if (DropTables) {
 			      //Reading Initial Seed Set from File
@@ -239,6 +249,84 @@ public class MongoDBAdapter {
 		System.out.println("Adding "+URI+" to Visited");
 		VisitedCollection.insertOne(docTemp);
 		return true;
+	}
+
+	public boolean PrevAddedURL(ArrayList<Document> URLs, Document URL)
+	{
+		for(Document u : URLs)
+		{
+			if(u.equals(URL))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public void addWord(String Word, String URL)
+	{
+		Document found = WordsCollection.find(Filters.eq("Word",Word)).first();
+		if(found == null)
+		{
+			//Not Found hence only add to Collection
+			ArrayList<Document> URLList = new ArrayList<>();
+			Document Obj = new Document("Url", URL);
+			URLList.add(Obj);
+			Document newWord = new Document("Word", Word).append("URLs", URLList).append("IDF", 0);
+			WordsCollection.insertOne(newWord);
+			System.out.println("Inserted new Word into table");
+		}
+		else
+		{
+			//Found; hence we need to update URL list.
+			Document Query = new Document("Word", Word);
+			Document WordToUpdate = (Document) WordsCollection.find(Query);
+			ArrayList<Document> URLs = (ArrayList<Document>) WordToUpdate.get("URLs");
+			Document URLtoAdd = new Document("Url", URL);
+			//We need to make sure the URL wasn't previously added
+			if(!PrevAddedURL(URLs, URLtoAdd))
+			{
+				URLs.add(URLtoAdd);
+				Document newDoc = new Document("URLs", URLs);
+				Document UpdatedDoc = new Document("$set", newDoc);
+				WordsCollection.updateOne(Query,UpdatedDoc);
+				System.out.println("Updated URL List in Word");
+			}
+			else
+			{
+				System.out.println("URL already exists in URL List. No Update!");
+			}
+		}
+	}
+
+	public void addURL(String URL, ArrayList<Word> Words, String Title)
+	{
+		ArrayList<Document> HTMLAnalysis = new ArrayList<>();
+		for(Word wrd : Words)
+		{
+			Document Obj = new Document("Word", wrd.text).append("TF", wrd.TF);
+			HTMLAnalysis.add(Obj);
+		}
+		Document newURL = new Document("URL", URL).append("Title", Title).append("HTML Analysis", HTMLAnalysis);
+		URLsCollection.insertOne(newURL);
+		System.out.println("Inserted new URL into table");
+	}
+
+	public void calculateIDF()
+	{
+		FindIterable<Document> iterable = WordsCollection.find();
+		for(Document Doc : iterable)
+		{
+			ArrayList<String> URLS = (ArrayList<String>) Doc.get("URLs");
+			String word = Doc.get("Word").toString();
+			//Note: Don't know how accurate it is maybe need to change later
+			double IDF = URLS.size()/MAX_NO_DOC;
+			Document Query = new Document("Word", word);
+			Document newDoc = new Document("IDF", IDF);
+			Document UpdatedDoc = new Document("$set", newDoc);
+			WordsCollection.updateOne(Query, UpdatedDoc);
+		}
+		System.out.println("Finished Calculating IDFs");
 	}
 
 	public static void main( String args[] ) {  
