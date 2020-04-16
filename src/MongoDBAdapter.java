@@ -241,11 +241,17 @@ public class MongoDBAdapter {
 		return true;
 	}
 
-	public static void main( String args[] ) {  
-
-		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
-		DBAdapeter.init(false);
-		DBAdapeter.getUnvisited();
+	
+	public boolean PrevAddedURL(ArrayList<Document> URLs, Document URL)
+	{
+		for(Document u : URLs)
+		{
+			if(u.equals(URL))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	public void addWord(String Word, String URL)
@@ -314,5 +320,11 @@ public class MongoDBAdapter {
 		System.out.println("Finished Calculating IDFs");
 	}
 	
+	public static void main( String args[] ) {  
+
+		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
+		DBAdapeter.init(false);
+		DBAdapeter.getUnvisited();
+	}
 
 }
