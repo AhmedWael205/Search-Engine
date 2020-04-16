@@ -1,6 +1,7 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -74,7 +75,7 @@ public class MongoDBAdapter {
 				  Document docTemp;
 				  System.out.println("Initiallizing Seed Set with ...");
 				  try {
-						reader = new BufferedReader(new FileReader((".\\Sports Sites.txt")));
+						reader = new BufferedReader(new FileReader((".\\SeedSet.txt")));
 						String line = reader.readLine();
 						while (line != null) {
 							line = line.replaceAll("[^:]//", "/").toLowerCase();
@@ -97,7 +98,8 @@ public class MongoDBAdapter {
 	
 	
 	public String getUnvisited() {
-		if (UnvisitedCollection.countDocuments() >= 0) {
+		
+		if (UnvisitedCollection.countDocuments() > 0 ) {
 			Document result = UnvisitedCollection.find(Filters.regex("url", ".*"+".com")).first();
 			String url;
 			try{
@@ -123,7 +125,7 @@ public class MongoDBAdapter {
 	};
 	
 	//TODO Add Does not Exist in ROBOT check.
-	public int addManyUnvisited(List<String> URIs) {
+	public int addManyUnvisited(Set<String> URIs) {
 		List<Document> documents = new ArrayList<Document>();
 		Document docTemp;
 		for(String URI : URIs){
@@ -140,7 +142,8 @@ public class MongoDBAdapter {
 				continue;
 			}	
 		}
-		UnvisitedCollection.insertMany(documents);
+		if(documents.size()!= 0)
+			UnvisitedCollection.insertMany(documents);
 		return documents.size();
 	}
 	
@@ -199,33 +202,42 @@ public class MongoDBAdapter {
 	
 	
 	@SuppressWarnings("deprecation")
-	public boolean addVisited(String URI , String content) {
+	public boolean addVisited(String URI , String AllContent,String Title,String Text) {
 		FindIterable<Document> result = VisitedCollection.find();
-		System.out.println("here11");
+		Document result2 = VisitedCollection.find(Filters.eq("url",URI)).first();
+		if(result2 != null) return false;
 		for(Document url : result)
 		{
-			String content2 = url.get("Document").toString().toLowerCase();
-			String url2 = url.get("url").toString();
+			String Title2 = url.get("Title").toString().toLowerCase();
 			
-			int distance = StringUtils.getLevenshteinDistance(content.toLowerCase(), content2);
-			float percentage = (float)distance * 100 / content.length(); 
+			int distance = StringUtils.getLevenshteinDistance(Title.toLowerCase(), Title2);
+			float percentage = (float)distance * 100 / Title.length(); 
 			
-			if(percentage < 20 || url2.equalsIgnoreCase(URI)) {
-				System.out.println("Content Matched to " + url2);
-				return false;
+			if(percentage < 20) {
+				String Text2 = url.get("Text").toString().toLowerCase();
+				int distance2 = StringUtils.getLevenshteinDistance(Text.toLowerCase(), Text2);
+				float percentage2 = (float)distance2 * 100 / Text.length(); 
+				
+				if(percentage2 < 20) {
+					String AllContent2 = url.get("Document").toString().toLowerCase();
+					int distance3 = StringUtils.getLevenshteinDistance(AllContent.toLowerCase(), AllContent2);
+					float percentage3 = (float)distance3 * 100 / AllContent.length(); 
+					if(percentage3 < 20) {
+						return false;
+					}
+				}
+				
 			}				
 		}
-		System.out.println("here12");
-		Document docTemp = new Document("url", URI).append("Document", content);
+		Document docTemp = new Document("url", URI).append("Title", Title).append("Text", Text).append("Document", AllContent);
 		VisitedCollection.insertOne(docTemp);
-		System.out.println("here13");
 		return true;
 	}
 
 	public static void main( String args[] ) {  
 
-		MongoDBAdapter DBAdapeter = new MongoDBAdapter();
-		DBAdapeter.init();
+		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
+		DBAdapeter.init(false);
 		DBAdapeter.getUnvisited();
 	}
 	
