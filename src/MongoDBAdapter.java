@@ -12,12 +12,11 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import org.apache.commons.lang3.StringUtils;
 
-import org.bson.*;
+import javax.swing.text.html.HTMLDocument;
 
 public class MongoDBAdapter {
 
@@ -233,14 +232,43 @@ public class MongoDBAdapter {
 				}
 			}				
 		}
-		Document docTemp = new Document("url", URI).append("Title", Title).append("Text", Text).append("Document", AllContent);
+		Document docTemp = new Document("url", URI).append("Title", Title).append("Text", Text).append("Indexed", 0).append("Document", AllContent);
 		System.out.println("Adding "+URI+" to Visited");
 		VisitedCollection.insertOne(docTemp);
 		return true;
 	}
 
-	
-	public boolean PrevAddedURL(ArrayList<Document> URLs, Document URL)
+	public Document getDoctoIndex() {
+		Document Res = VisitedCollection.find(Filters.eq("Indexed", 0)).first();
+		updateIndexedVisits(Res.get("url").toString());
+		return Res;
+	}
+
+	public long getIndexedCount()
+	{
+		Document Query = new Document("Indexed", 0);
+		return VisitedCollection.countDocuments(Query);
+	}
+
+	public void updateIndexedVisits(String URL)
+	{
+		Document Query = new Document("url", URL);
+		Document newDoc = new Document("Indexed",1);
+		Document UpdatedDoc = new Document("$set", newDoc);
+		VisitedCollection.updateOne(Query,UpdatedDoc);
+		System.out.printf("Changed Indexed Flag to 1 for URL %s before Parsing\n", URL);
+	}
+
+	public void deleteHTMLAfterVisit(String URL)
+	{
+		Document Query = new Document("url", URL);
+		Document newDoc = new Document("Indexed",1).append("Document", "");
+		Document UpdatedDoc = new Document("$set", newDoc);
+		VisitedCollection.updateOne(Query,UpdatedDoc);
+		System.out.printf("Removed Document from URL %s after Parsing\n", URL);
+	}
+
+	public boolean prevAddedURL(ArrayList<Document> URLs, Document URL)
 	{
 		for(Document u : URLs)
 		{
@@ -273,7 +301,7 @@ public class MongoDBAdapter {
 			ArrayList<Document> URLs = (ArrayList<Document>) WordToUpdate.get("URLs");
 			Document URLtoAdd = new Document("Url", URL).append("Title", Title);
 			//We need to make sure the URL wasn't previously added
-			if(!PrevAddedURL(URLs, URLtoAdd))
+			if(!prevAddedURL(URLs, URLtoAdd))
 			{
 				URLs.add(URLtoAdd);
 				Document newDoc = new Document("URLs", URLs);
@@ -317,6 +345,8 @@ public class MongoDBAdapter {
 		}
 		System.out.println("Finished Calculating IDFs");
 	}
+
+
 	
 	public static void main( String args[] ) {  
 
