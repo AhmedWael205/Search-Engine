@@ -8,6 +8,9 @@ import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Entities;
+
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -21,8 +24,9 @@ import java.util.regex.Pattern;
 
 
 
+
 public class Crawler implements Runnable{
-	private int maxVisited = 200;
+	private int maxVisited = 1000;
 	private int maxLinkfromSite = 50;
 	private MongoDBAdapter DBAdapeter;
 	private Object VisitedLock;
@@ -79,9 +83,6 @@ public class Crawler implements Runnable{
 	
 	
 	 public void startCrawl(MongoDBAdapter DBAdapeter) {
-
-//		 	List<String> URIs = new ArrayList<String>();
-		 	Set<String> URISet = new HashSet<String>();
 		 	
 		 	while(DBAdapeter.visitedCount() <= maxVisited)
             try {
@@ -93,33 +94,41 @@ public class Crawler implements Runnable{
 	            	this.addRobots(URL, DBAdapeter,RobotLock);
 	            	if(DBAdapeter.inRobots(URL,RobotLock))
 	            		continue;
-	                //2. Fetch the HTML code
 	            	
-	            	org.jsoup.nodes.Document document = Jsoup.connect(URL).get();
+	            	Set<String> URISet = new HashSet<String>();
+	            	Document document = Jsoup.connect(URL).get();
+
+	            	for (Element script : document.getElementsByTag("script")) {
+	                    script.remove();
+	                }
+	            	int count = 0 ;
+	                for (Element a : document.getElementsByTag("a")) { 
+	                    a.removeAttr("onclick");
+	                    String URI =  a.attr("abs:href");
+	                    if(count <= maxLinkfromSite)
+		                	URISet.add(URI); 
+			                if(URISet.size() - count == 1)  {
+		                		count++;
+		                	}
+	                    a.removeAttr("href");
+	                }
 	            	
-	            	String AllContent = document.toString();
+	            	document.outputSettings()
+	                        .syntax(Document.OutputSettings.Syntax.xml)
+	                        .escapeMode(Entities.EscapeMode.xhtml);
+	            	
+	                String AllContent = document.toString();
 	            	String Title = document.select("title").toString();
 	            	String Text = document.text().toString();
 	            	
 	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text,VisitedLock)) {
-		                //3. Parse the HTML to extract links to other URLs
-		            	
-		                Elements linksOnPage = document.select("a[href]");
 		
-		                //5. For each extracted URL... go back to Step 4.
-		                int count = 0 ;
-		                for (Element page : linksOnPage) {
-		                	String URI = page.attr("abs:href");
-		                	URISet.add(URI); 
-		                	if(URISet.size() - count == 1) {
-		                		synchronized (UnvisitedLock) {
-		                			DBAdapeter.addUnvisited(URI);
-		                		}
-		                		count++;
-		                	}
-		                	if(count >= maxLinkfromSite) 
-		                		break;
-		                }
+		                for(String url : URISet) {
+//		                	synchronized (UnvisitedLock) {
+	                		DBAdapeter.addUnvisited(url);
+//		                	}
+	                	}
+
 	            	}
             	}
             } catch (IOException e) {

@@ -103,7 +103,7 @@ public class MongoDBAdapter {
 	public String getUnvisited() {
 		
 		if (UnvisitedCollection.countDocuments() > 0 ) {
-			Document result = UnvisitedCollection.find(Filters.regex("url", ".*"+".com")).first();
+			Document result = UnvisitedCollection.find(Filters.regex("url", ".*"+".com.*?")).first();
 			String url;
 			try{
 				url = result.get("url").toString();
@@ -172,16 +172,14 @@ public class MongoDBAdapter {
 		Document result = null;
 		for(String URI : URIs) {
 			URI = URI.replaceAll("[^:]//", "/").toLowerCase();
-			synchronized (RobotLock) {
+//			synchronized (RobotLock) {
 				result = RobotCollection.find(Filters.eq("urlRegex",URI)).first();
-			}
+//			}
 			
 			if(result == null) {
 				docTemp = new Document("urlRegex", URI);
 				System.out.println("Adding "+URI+" to Robot");
-				synchronized (RobotLock) {
-					RobotCollection.insertOne(docTemp);
-				}
+				RobotCollection.insertOne(docTemp);
 				count++;
 			} else {
 				continue;
@@ -192,9 +190,9 @@ public class MongoDBAdapter {
 	
 	public boolean inRobots(String URI,Object RobotLock)	{
 		FindIterable<Document> result = null;
-		synchronized (RobotLock) {
-			result = RobotCollection.find();
-		}
+//		synchronized (RobotLock) {
+		result = RobotCollection.find();
+//		}
 		URI = URI.replaceAll("[^:]//", "/").toLowerCase();
 		System.out.println("Check this in Robot "+ URI);
 		for(Document currRegex : result)
@@ -215,10 +213,10 @@ public class MongoDBAdapter {
 	public boolean addVisited(String URI , String AllContent,String Title,String Text,Object VisitedLock) {
 		Document result = null;
 		Document result2 = null;
-		synchronized (VisitedLock) {
+//		synchronized (VisitedLock) {
 			result = VisitedCollection.find(Filters.eq("Title",Title)).first();
 			result2 = VisitedCollection.find(Filters.eq("url",URI)).first();
-		}
+//		}
 		if(result2 != null) return false;
 		if(result != null)
 		{	
