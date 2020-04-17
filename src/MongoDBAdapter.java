@@ -59,16 +59,24 @@ public class MongoDBAdapter {
 			      OLDVisited.drop();
 			      MongoCollection<Document> OLDRobot = database.getCollection("Robot");
 			      OLDRobot.drop();
+				  MongoCollection<Document> OLDWords = database.getCollection("Words");
+				  OLDWords.drop();
+				  MongoCollection<Document> OLDURLs = database.getCollection("URLs");
+				  OLDURLs.drop();
 			      
 			      // Creating a new Collections
 			      database.createCollection("Unvisited");
 			      database.createCollection("Visited");
 			      database.createCollection("Robot");
+				  database.createCollection("Words");
+				  database.createCollection("URLs");
 		      }
 		      
 		      UnvisitedCollection = database.getCollection("Unvisited");
 		      VisitedCollection = database.getCollection("Visited");
 		      RobotCollection = database.getCollection("Robot");
+		      WordsCollection = database.getCollection("Words");
+		      URLsCollection = database.getCollection("URLs");
 		      
 		      if (DropTables) {
 			      //Reading Initial Seed Set from File
