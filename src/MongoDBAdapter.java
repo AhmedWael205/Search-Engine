@@ -252,14 +252,14 @@ public class MongoDBAdapter {
 		return false;
 	}
 	
-	public void addWord(String Word, String URL)
+	public void addWord(String Word, String URL, String Title)
 	{
 		Document found = WordsCollection.find(Filters.eq("Word",Word)).first();
 		if(found == null)
 		{
 			//Not Found hence only add to Collection
 			ArrayList<Document> URLList = new ArrayList<>();
-			Document Obj = new Document("Url", URL);
+			Document Obj = new Document("Url", URL).append("Title", Title);
 			URLList.add(Obj);
 			Document newWord = new Document("Word", Word).append("URLs", URLList).append("IDF", 0);
 			WordsCollection.insertOne(newWord);
@@ -271,7 +271,7 @@ public class MongoDBAdapter {
 			Document Query = new Document("Word", Word);
 			Document WordToUpdate = (Document) WordsCollection.find(Query);
 			ArrayList<Document> URLs = (ArrayList<Document>) WordToUpdate.get("URLs");
-			Document URLtoAdd = new Document("Url", URL);
+			Document URLtoAdd = new Document("Url", URL).append("Title", Title);
 			//We need to make sure the URL wasn't previously added
 			if(!PrevAddedURL(URLs, URLtoAdd))
 			{
@@ -293,7 +293,7 @@ public class MongoDBAdapter {
 		ArrayList<Document> HTMLAnalysis = new ArrayList<>();
 		for(Word wrd : Words)
 		{
-			Document Obj = new Document("Word", wrd.text).append("TF", wrd.TF);
+			Document Obj = new Document("Word", wrd.text).append("TF", wrd.TF).append("Pos", wrd.Pos);
 			HTMLAnalysis.add(Obj);
 		}
 		Document newURL = new Document("URL", URL).append("Title", Title).append("HTML Analysis", HTMLAnalysis);
