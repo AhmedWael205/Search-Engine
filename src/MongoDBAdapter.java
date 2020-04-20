@@ -30,7 +30,7 @@ public class MongoDBAdapter {
 	private MongoClientURI uri;
 	private MongoClient mongoClient;
 	private MongoDatabase database;
-	final int MAX_NO_DOC = 5000;
+	final double MAX_NO_DOC = 5000;
 	
 	public MongoDBAdapter(boolean Global) {
 		Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
@@ -297,8 +297,9 @@ public class MongoDBAdapter {
 		{
 			//Found; hence we need to update URL list.
 			Document Query = new Document("Word", Word);
-			Document WordToUpdate = (Document) WordsCollection.find(Query);
+			Document WordToUpdate = WordsCollection.find(Filters.eq("Word", Word)).first();
 			ArrayList<Document> URLs = (ArrayList<Document>) WordToUpdate.get("URLs");
+			System.out.println(URLs);
 			Document URLtoAdd = new Document("Url", URL).append("Title", Title);
 			//We need to make sure the URL wasn't previously added
 			if(!prevAddedURL(URLs, URLtoAdd))
@@ -337,7 +338,7 @@ public class MongoDBAdapter {
 			ArrayList<String> URLS = (ArrayList<String>) Doc.get("URLs");
 			String word = Doc.get("Word").toString();
 			//Note: Don't know how accurate it is maybe need to change later
-			double IDF = URLS.size()/MAX_NO_DOC;
+			double IDF = (double)URLS.size()/MAX_NO_DOC;
 			Document Query = new Document("Word", word);
 			Document newDoc = new Document("IDF", IDF);
 			Document UpdatedDoc = new Document("$set", newDoc);
