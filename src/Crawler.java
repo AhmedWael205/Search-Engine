@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 
 
 public class Crawler implements Runnable{
-	private int maxVisited = 3000;
+	private int maxVisited = 5000;
 	private int maxLinkfromSite = 50;
 	private MongoDBAdapter DBAdapeter;
 	private Object UnvisitedLock;
@@ -140,8 +140,8 @@ public class Crawler implements Runnable{
 	    }
 	
 	public static void main( String args[] ) {
-		boolean Global = false;
-		boolean DropTable = true;
+		boolean Global = true;
+		boolean DropTable = false;
 		int ThreadNumbers = 50;
 		Object UnvisitedLock = new Object();
 		

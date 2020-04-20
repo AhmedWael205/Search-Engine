@@ -35,7 +35,7 @@ public class MongoDBAdapter {
 	public MongoDBAdapter(boolean Global) {
 		Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
 		if(Global) {
-			this.uri = new MongoClientURI( "mongodb+srv://Crawler2 :Crawler123@crawlercluster-kgwg6.mongodb.net/retryWrites=true&w=majority" );
+			this.uri = new MongoClientURI( "mongodb+srv://Crawler2:Crawler123@crawlercluster-kgwg6.mongodb.net/retryWrites=true&w=majority" );
 			this.mongoClient = new MongoClient(uri);
 			this.database = mongoClient.getDatabase("Test");
 		} else {
@@ -44,12 +44,7 @@ public class MongoDBAdapter {
 		}
 	}
 	public void init(boolean DropTables) {
-			  try {
-				  String s = database.toString();
-			  } catch (MongoTimeoutException e) {
-				  System.out.println("Database not connected ..." + e.getMessage());
-				  return;
-			  }
+			 
 		      System.out.println("Database Connected Successfully ...");
 		      
 		      if(DropTables) {
