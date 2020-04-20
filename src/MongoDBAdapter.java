@@ -6,10 +6,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.bson.Document;
+import org.jsoup.Jsoup;
 
 import com.mongodb.Block;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -25,17 +27,15 @@ public class MongoDBAdapter {
 	private MongoCollection<Document> UnvisitedCollection;
 	private MongoCollection<Document> VisitedCollection;
 	private MongoCollection<Document> RobotCollection;
-	private MongoClientURI uri = new MongoClientURI( "mongodb+srv://CrawlerDB:Crawler123@crawlercluster-kgwg6.mongodb.net/Test?retryWrites=true&w=majority"  ); ;
-//	private MongoClient mongoClient = new MongoClient(uri);
-//	private MongoDatabase database = mongoClient.getDatabase("Test");
-//	private MongoClient mongoClient = new MongoClient( "localhost" , 27017 );
-//	private MongoDatabase database = mongoClient.getDatabase("Crawler");
+	private MongoClientURI uri;
 	private MongoClient mongoClient;
 	private MongoDatabase database;
 	final int MAX_NO_DOC = 5000;
 	
 	public MongoDBAdapter(boolean Global) {
+		Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
 		if(Global) {
+			this.uri = new MongoClientURI( "mongodb+srv://Crawler2 :Crawler123@crawlercluster-kgwg6.mongodb.net/retryWrites=true&w=majority" );
 			this.mongoClient = new MongoClient(uri);
 			this.database = mongoClient.getDatabase("Test");
 		} else {
@@ -44,11 +44,12 @@ public class MongoDBAdapter {
 		}
 	}
 	public void init(boolean DropTables) {
-		Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
-		
-			  
-			  
-			  
+			  try {
+				  String s = database.toString();
+			  } catch (MongoTimeoutException e) {
+				  System.out.println("Database not connected ..." + e.getMessage());
+				  return;
+			  }
 		      System.out.println("Database Connected Successfully ...");
 		      
 		      if(DropTables) {
@@ -173,15 +174,14 @@ public class MongoDBAdapter {
 		return false;
 	}
 	
-	public int addRobots(List<String> URIs,Object RobotLock) {
+	public int addRobots(List<String> URIs) {
 		int count = 0;
 		Document docTemp;
 		Document result = null;
 		for(String URI : URIs) {
+			
 			URI = URI.replaceAll("[^:]//", "/").toLowerCase();
-//			synchronized (RobotLock) {
-				result = RobotCollection.find(Filters.eq("urlRegex",URI)).first();
-//			}
+			result = RobotCollection.find(Filters.eq("urlRegex",URI)).first();
 			
 			if(result == null) {
 				docTemp = new Document("urlRegex", URI);
@@ -195,11 +195,11 @@ public class MongoDBAdapter {
 		return count;
 	}
 	
-	public boolean inRobots(String URI,Object RobotLock)	{
+	public boolean inRobots(String URI)	{
+		if (RobotCollection.find(Filters.eq("urlRegex",URI)).first() != null) return true;
+
 		FindIterable<Document> result = null;
-//		synchronized (RobotLock) {
-		result = RobotCollection.find();
-//		}
+		result = RobotCollection.find(Filters.regex("urlRegex", ".*"+"\\*"+".*?"));
 		URI = URI.replaceAll("[^:]//", "/").toLowerCase();
 		System.out.println("Check this in Robot "+ URI);
 		for(Document currRegex : result)
@@ -217,30 +217,27 @@ public class MongoDBAdapter {
 	
 	
 	@SuppressWarnings("deprecation")
-	public boolean addVisited(String URI , String AllContent,String Title,String Text,Object VisitedLock) {
-		Document result = null;
-		Document result2 = null;
-//		synchronized (VisitedLock) {
-			result = VisitedCollection.find(Filters.eq("Title",Title)).first();
-			result2 = VisitedCollection.find(Filters.eq("url",URI)).first();
-//		}
-		if(result2 != null) return false;
+	public boolean addVisited(String URI , String AllContent,String Title,String Text) {
+		
+		if(VisitedCollection.find(Filters.eq("url",URI)).first() != null) return false;
+		
+		Document result = VisitedCollection.find(Filters.eq("Title",Title)).first();
 		if(result != null)
 		{	
-			String Text2 = result.get("Text").toString().toLowerCase();
-			int distance = StringUtils.getLevenshteinDistance(Text.toLowerCase(), Text2);
+			org.jsoup.nodes.Document document = Jsoup.parse(result.get("Document").toString());
+			int distance = StringUtils.getLevenshteinDistance(Text.toLowerCase(), document.text().toString().toLowerCase());
 			float percentage = (float)distance * 100 / Text.length(); 
 			
 			if(percentage < 20) {
-				String AllContent2 = result.get("Document").toString().toLowerCase();
-				int distance2 = StringUtils.getLevenshteinDistance(AllContent.toLowerCase(), AllContent2);
+				
+				int distance2 = StringUtils.getLevenshteinDistance(AllContent.toLowerCase(), document.toString().toLowerCase());
 				float percentage2 = (float)distance2 * 100 / AllContent.length(); 
 				if(percentage2 < 20) {
 					return false;
 				}
 			}				
 		}
-		Document docTemp = new Document("url", URI).append("Title", Title).append("Text", Text).append("Indexed", 0).append("Document", AllContent);
+		Document docTemp = new Document("url", URI).append("Title", Title).append("Indexed", 0).append("Document", AllContent);
 		System.out.println("Adding "+URI+" to Visited");
 		VisitedCollection.insertOne(docTemp);
 		return true;
@@ -360,7 +357,7 @@ public class MongoDBAdapter {
 
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
 		DBAdapeter.init(false);
-		DBAdapeter.getUnvisited();
+		DBAdapeter.inRobots("https://www.ft.co/search");
 	}
 
 }

@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -26,25 +27,22 @@ import java.util.regex.Pattern;
 
 
 public class Crawler implements Runnable{
-	private int maxVisited = 1000;
+	private int maxVisited = 3000;
 	private int maxLinkfromSite = 50;
 	private MongoDBAdapter DBAdapeter;
-	private Object VisitedLock;
 	private Object UnvisitedLock;
-	private Object RobotLock;
+	
 	public void run() {
 		
 		this.startCrawl(DBAdapeter);
 	}
 	
-	public Crawler(MongoDBAdapter DBAdapeter, Object VisitedLock,Object UnvisitedLock, Object RobotLock) {
+	public Crawler(MongoDBAdapter DBAdapeter,Object UnvisitedLock) {
 		this.DBAdapeter = DBAdapeter;
-		this.VisitedLock = VisitedLock;
 		this.UnvisitedLock = UnvisitedLock;
-		this.RobotLock = RobotLock;
 	}
 	
-	public boolean addRobots(String URI,MongoDBAdapter DBAdapeter,Object RobotLock) {
+	public boolean addRobots(String URI,MongoDBAdapter DBAdapeter) {
 			String Robots = URI+"/robots.txt/";
 			String pattern = "Disallow: (.*)";
 			Pattern r = Pattern.compile(pattern);
@@ -76,7 +74,7 @@ public class Crawler implements Runnable{
 		        return false;
 		    }
 		if(pathsRegex.size() != 0)
-			DBAdapeter.addRobots(pathsRegex,RobotLock);
+			DBAdapeter.addRobots(pathsRegex);
 		return true;
 	}
 	
@@ -87,16 +85,23 @@ public class Crawler implements Runnable{
 		 	while(DBAdapeter.visitedCount() <= maxVisited)
             try {
             	String URL = "false";
+            	
+            	// Synchronized because we delete it from table after we find it
             	synchronized (UnvisitedLock) {
             		URL = DBAdapeter.getUnvisited();
             	}
             	if (URL != "false") {
-	            	this.addRobots(URL, DBAdapeter,RobotLock);
-	            	if(DBAdapeter.inRobots(URL,RobotLock))
+            		this.addRobots(URL, DBAdapeter);
+	            	if(DBAdapeter.inRobots(URL))
 	            		continue;
 	            	
 	            	Set<String> URISet = new HashSet<String>();
-	            	Document document = Jsoup.connect(URL).get();
+	            	Connection connection = Jsoup.connect(URL);
+	            	Connection.Response r = connection.url(URL).timeout(10000).execute();
+	            	
+	            	 if (!r.contentType().contains("text/html")) continue;
+
+	            	Document document = connection.get();
 
 	            	for (Element script : document.getElementsByTag("script")) {
 	                    script.remove();
@@ -105,7 +110,7 @@ public class Crawler implements Runnable{
 	                for (Element a : document.getElementsByTag("a")) { 
 	                    a.removeAttr("onclick");
 	                    String URI =  a.attr("abs:href");
-	                    if(count <= maxLinkfromSite)
+	                    if(count <= maxLinkfromSite && URI != "")
 		                	URISet.add(URI); 
 			                if(URISet.size() - count == 1)  {
 		                		count++;
@@ -121,35 +126,32 @@ public class Crawler implements Runnable{
 	            	String Title = document.select("title").toString();
 	            	String Text = document.text().toString();
 	            	
-	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text,VisitedLock)) {
+	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text)) {
 		
 		                for(String url : URISet) {
-//		                	synchronized (UnvisitedLock) {
-	                		DBAdapeter.addUnvisited(url);
-//		                	}
+		                	DBAdapeter.addUnvisited(url);
 	                	}
 
 	            	}
             	}
-            } catch (IOException e) {
-                System.err.println(e.getMessage());
+            } catch (IOException | IllegalArgumentException | NullPointerException ex) {
+                continue;
             }
 	    }
 	
 	public static void main( String args[] ) {
-		boolean Global = true;
-		boolean DropTable = false;
+		boolean Global = false;
+		boolean DropTable = true;
+		int ThreadNumbers = 50;
+		Object UnvisitedLock = new Object();
+		
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);
 		DBAdapeter.init(DropTable);
-		int ThreadNumbers = 50;
-		Object VisitedLock = new Object();
-		Object UnvisitedLock = new Object();
-		Object RobotLock = new Object();
 		
 		
 		Thread myThreads[] = new Thread[ThreadNumbers];
 		for (int j = 0; j < ThreadNumbers; j++) {
-		    myThreads[j] = new Thread(new Crawler(DBAdapeter,VisitedLock,UnvisitedLock,RobotLock));
+		    myThreads[j] = new Thread(new Crawler(DBAdapeter,UnvisitedLock));
 		    myThreads[j].start();
 		}
 		for (int j = 0; j < ThreadNumbers; j++) {
@@ -159,6 +161,6 @@ public class Crawler implements Runnable{
 				e.printStackTrace();
 			} 
 		}
-	}
+	}	
 
 }
