@@ -209,6 +209,7 @@ public class MongoDBAdapter {
 	}
 	
 	public long visitedCount() {return VisitedCollection.countDocuments();}
+	public long unvisitedCount() {return UnvisitedCollection.countDocuments();}
 	
 	
 	@SuppressWarnings("deprecation")

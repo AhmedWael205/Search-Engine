@@ -27,8 +27,9 @@ import java.util.regex.Pattern;
 
 
 public class Crawler implements Runnable{
-	private int maxVisited = 5000;
+	private int maxVisited = 7500;
 	private int maxLinkfromSite = 50;
+	private int maxUnvisited = 20000;
 	private MongoDBAdapter DBAdapeter;
 	private Object UnvisitedLock;
 	
@@ -90,6 +91,7 @@ public class Crawler implements Runnable{
             	synchronized (UnvisitedLock) {
             		URL = DBAdapeter.getUnvisited();
             	}
+            	long unvisitedCount = DBAdapeter.unvisitedCount();
             	if (URL != "false") {
             		this.addRobots(URL, DBAdapeter);
 	            	if(DBAdapeter.inRobots(URL))
@@ -107,16 +109,23 @@ public class Crawler implements Runnable{
 	                    script.remove();
 	                }
 	            	int count = 0 ;
-	                for (Element a : document.getElementsByTag("a")) { 
-	                    a.removeAttr("onclick");
-	                    String URI =  a.attr("abs:href");
-	                    if(count <= maxLinkfromSite && URI != "")
-		                	URISet.add(URI); 
-			                if(URISet.size() - count == 1)  {
-		                		count++;
-		                	}
-	                    a.removeAttr("href");
-	                }
+	            	if(unvisitedCount < maxUnvisited) {
+		                for (Element a : document.getElementsByTag("a")) { 
+		                    a.removeAttr("onclick");
+		                    String URI =  a.attr("abs:href");
+		                    if(count <= maxLinkfromSite && URI != "")
+			                	URISet.add(URI); 
+				                if(URISet.size() - count == 1)  {
+			                		count++;
+			                	}
+		                    a.removeAttr("href");
+		                }
+	            	} else {
+	            		for (Element a : document.getElementsByTag("a")) { 
+		                    a.removeAttr("onclick");
+		                    a.removeAttr("href");
+	            		}
+	            	}
 	            	
 	            	document.outputSettings()
 	                        .syntax(Document.OutputSettings.Syntax.xml)
@@ -127,11 +136,11 @@ public class Crawler implements Runnable{
 	            	String Text = document.text().toString();
 	            	
 	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text)) {
-		
-		                for(String url : URISet) {
-		                	DBAdapeter.addUnvisited(url);
-	                	}
-
+	            		if(unvisitedCount < maxUnvisited) {
+			                for(String url : URISet) {
+			                	DBAdapeter.addUnvisited(url);
+		                	}
+	            		}
 	            	}
             	}
             } catch (IOException | IllegalArgumentException | NullPointerException ex) {
