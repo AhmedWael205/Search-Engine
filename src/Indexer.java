@@ -19,7 +19,12 @@ public class Indexer implements Runnable{
     public ArrayList<Word> Res;
     String Title;
     public Document HTML;
-    private MongoDBAdapter DBAdapeter;
+    //Access Words Collection
+    private MongoDBAdapter DBAdapeter1;
+    //Access URL Collection
+    private MongoDBAdapter DBAdapeter2;
+    //Access Visited Collection
+    private MongoDBAdapter DBAdapeter3;
     public org.bson.Document HTMLDoc;
     public String HTMLString;
 
@@ -30,7 +35,9 @@ public class Indexer implements Runnable{
 
     public Indexer(MongoDBAdapter DBA)
     {
-        DBAdapeter = DBA;
+        DBAdapeter1 = DBA;
+        DBAdapeter2 = DBA;
+        DBAdapeter3 = DBA;
         Res = new ArrayList<>();
         ReadStopWords();
     }
@@ -116,23 +123,23 @@ public class Indexer implements Runnable{
             System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
             InsertURLAnalysis();
             InsertWordsToCollection();
-            DeleteHTMLFinished();
+            //DeleteHTMLFinished();
         }
     }
 
     public long RemainingToIndex()
     {
-        synchronized (DBAdapeter)
+        synchronized (DBAdapeter3)
         {
-            return DBAdapeter.getIndexedCount();
+            return DBAdapeter3.getIndexedCount();
         }
     }
 
     public void ReadHTMLDoc()
     {
-        synchronized (DBAdapeter)
+        synchronized (DBAdapeter3)
         {
-            HTMLDoc = DBAdapeter.getDoctoIndex();
+            HTMLDoc = DBAdapeter3.getDoctoIndex();
             Title = HTMLDoc.get("Title").toString();
             HTMLString = HTMLDoc.get("Document").toString();
             URLtoParse = HTMLDoc.get("url").toString();
@@ -140,13 +147,6 @@ public class Indexer implements Runnable{
         }
     }
 
-    public void DeleteHTMLFinished()
-    {
-        synchronized (DBAdapeter)
-        {
-            DBAdapeter.deleteHTMLAfterVisit(URLtoParse);
-        }
-    }
 
     public void RemoveSWAndNEC(ArrayList<String> L, String[] Arr)
     {
@@ -222,26 +222,26 @@ public class Indexer implements Runnable{
     {
         for(Word w : Res)
         {
-            synchronized (DBAdapeter)
+            synchronized (DBAdapeter1)
             {
-                DBAdapeter.addWord(w.text, URLtoParse,Title);
+                DBAdapeter1.addWord(w.text, URLtoParse,Title);
             }
         }
     }
 
     public void InsertURLAnalysis()
     {
-        synchronized (DBAdapeter)
+        synchronized (DBAdapeter2)
         {
-            DBAdapeter.addURL(URLtoParse, Res, Title);
+            DBAdapeter2.addURL(URLtoParse, Res, Title);
         }
     }
 
     public void FinalizeIDF()
     {
-        synchronized (DBAdapeter)
+        synchronized (DBAdapeter1)
         {
-            DBAdapeter.calculateIDF();
+            DBAdapeter1.calculateIDF();
         }
     }
 

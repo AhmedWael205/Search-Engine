@@ -31,7 +31,7 @@ public class MongoDBAdapter {
 	private MongoClient mongoClient;
 	private MongoDatabase database;
 	final double MAX_NO_DOC = 5000;
-	
+
 	public MongoDBAdapter(boolean Global) {
 		Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
 		if(Global) {
