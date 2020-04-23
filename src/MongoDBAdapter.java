@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -30,7 +31,7 @@ public class MongoDBAdapter {
 	private MongoClientURI uri;
 	private MongoClient mongoClient;
 	private MongoDatabase database;
-	final double MAX_NO_DOC = 5000;
+	private double MAX_NO_DOC;
 
 	public MongoDBAdapter(boolean Global) {
 		Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
@@ -257,7 +258,7 @@ public class MongoDBAdapter {
 		Document newDoc = new Document("Indexed",1);
 		Document UpdatedDoc = new Document("$set", newDoc);
 		VisitedCollection.updateOne(Query,UpdatedDoc);
-		System.out.printf("Changed Indexed Flag to 1 for URL %s before Parsing\n", URL);
+//		System.out.printf("Changed Indexed Flag to 1 for URL %s before Parsing\n", URL);
 	}
 
 	public void deleteHTMLAfterVisit(String URL)
@@ -266,7 +267,7 @@ public class MongoDBAdapter {
 		Document newDoc = new Document("Indexed",1).append("Document", "");
 		Document UpdatedDoc = new Document("$set", newDoc);
 		VisitedCollection.updateOne(Query,UpdatedDoc);
-		System.out.printf("Removed Document from URL %s after Parsing\n", URL);
+//		System.out.printf("Removed Document from URL %s after Parsing\n", URL);
 	}
 
 	public boolean prevAddedURL(ArrayList<Document> URLs, Document URL)
@@ -292,48 +293,53 @@ public class MongoDBAdapter {
 			URLList.add(Obj);
 			Document newWord = new Document("Word", Word).append("URLs", URLList).append("IDF", 0);
 			WordsCollection.insertOne(newWord);
-			System.out.println("Inserted new Word into table");
+//			System.out.println("Inserted new Word into table");
 		}
 		else
 		{
 			//Found; hence we need to update URL list.
 			Document Query = new Document("Word", Word);
 			Document WordToUpdate = WordsCollection.find(Filters.eq("Word", Word)).first();
-			ArrayList<Document> URLs = (ArrayList<Document>) WordToUpdate.get("URLs");
-			System.out.println(URLs);
+			ArrayList<Document> urls = (ArrayList<Document>) WordToUpdate.get("URLs");
+			Set<Document> URLs = new HashSet<Document>(urls);
+			//System.out.println(URLs);
 			Document URLtoAdd = new Document("Url", URL).append("Title", Title);
+			boolean added = URLs.add(URLtoAdd);
 			//We need to make sure the URL wasn't previously added
-			if(!prevAddedURL(URLs, URLtoAdd))
+			if(added)
 			{
-				URLs.add(URLtoAdd);
 				Document newDoc = new Document("URLs", URLs);
 				Document UpdatedDoc = new Document("$set", newDoc);
 				WordsCollection.updateOne(Query,UpdatedDoc);
-				System.out.println("Updated URL List in Word");
+//				System.out.println("Updated URL List in Word");
 			}
 			else
 			{
-				System.out.println("URL already exists in URL List. No Update!");
+//				System.out.println("URL already exists in URL List. No Update!");
 			}
 		}
 	}
 
-	public void addURL(String URL, ArrayList<Word> Words, String Title)
+	public void addURL(String URL, ArrayList<Document> HTMLAnalysis, String Title)
 	{
-		ArrayList<Document> HTMLAnalysis = new ArrayList<>();
-		for(Word wrd : Words)
+		Document found = URLsCollection.find(Filters.eq("URL",URL)).first();
+		if(found == null)
 		{
-			Document Obj = new Document("Word", wrd.text).append("TF", wrd.TF).append("Pos", wrd.Pos);
-			HTMLAnalysis.add(Obj);
+			Document newURL = new Document("URL", URL).append("Title", Title).append("HTML Analysis", HTMLAnalysis);
+			URLsCollection.insertOne(newURL);
+//			System.out.println("Inserted new URL into table");
 		}
-		Document newURL = new Document("URL", URL).append("Title", Title).append("HTML Analysis", HTMLAnalysis);
-		URLsCollection.insertOne(newURL);
-		System.out.println("Inserted new URL into table");
+		else
+		{
+//			System.out.println("URL already exsists");
+		}
 	}
 
 	public void calculateIDF()
 	{
+		System.out.println("Started Calculating IDFs");
 		FindIterable<Document> iterable = WordsCollection.find();
+		MAX_NO_DOC = visitedCount();
 		for(Document Doc : iterable)
 		{
 			ArrayList<String> URLS = (ArrayList<String>) Doc.get("URLs");

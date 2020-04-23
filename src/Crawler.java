@@ -149,9 +149,9 @@ public class Crawler implements Runnable{
 	    }
 	
 	public static void main( String args[] ) {
-		boolean Global = true;
-		boolean DropTable = false;
-		int ThreadNumbers = 50;
+		boolean Global = false;
+		boolean DropTable = true;
+		int ThreadNumbers = 200;
 		Object UnvisitedLock = new Object();
 		
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);

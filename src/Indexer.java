@@ -2,15 +2,13 @@ import org.jsoup.Jsoup;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.IOException;
+import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.jsoup.nodes.Document;
 import org.tartarus.snowball.ext.PorterStemmer;
-import org.tartarus.snowball.ext.EnglishStemmer;
-
-import javax.swing.text.html.HTMLDocument;
 
 public class Indexer implements Runnable{
     public String URLtoParse;
@@ -20,25 +18,32 @@ public class Indexer implements Runnable{
     String Title;
     public Document HTML;
     //Access Words Collection
-    private MongoDBAdapter DBAdapeter1;
-    //Access URL Collection
-    private MongoDBAdapter DBAdapeter2;
-    //Access Visited Collection
-    private MongoDBAdapter DBAdapeter3;
+    private MongoDBAdapter DBAdapeter;
+
+    private Object WordLock;
+    private Object URLLock;
+
     public org.bson.Document HTMLDoc;
     public String HTMLString;
+
+    public ArrayList<org.bson.Document> HTMLAnalysis;
+    public Set<String> ResWords;
 
     @Override
     public void run() {
         this.Index();
     }
 
-    public Indexer(MongoDBAdapter DBA)
+    public Indexer(MongoDBAdapter DBA, Object WL, Object UL)
     {
-        DBAdapeter1 = DBA;
-        DBAdapeter2 = DBA;
-        DBAdapeter3 = DBA;
+        DBAdapeter = DBA;
         Res = new ArrayList<>();
+        HTMLAnalysis = new ArrayList<org.bson.Document>();
+        ResWords = new HashSet<>();
+
+        WordLock = WL;
+        URLLock = UL;
+
         ReadStopWords();
     }
 
@@ -60,6 +65,10 @@ public class Indexer implements Runnable{
         while(RemainingToIndex() >= 1)
         {
             ReadHTMLDoc();
+
+            HTMLString = HTMLDoc.get("Document").toString();
+            URLtoParse = HTMLDoc.get("url").toString();
+            HTML = Jsoup.parse(HTMLString);
 
             Title = HTML.title();
             String body = HTML.body().text().toLowerCase();
@@ -93,9 +102,9 @@ public class Indexer implements Runnable{
             RemoveSWAndNEC(H1, H1Array);
             RemoveSWAndNEC(H2, H2Array);
             RemoveSWAndNEC(H3, H3Array);
-            RemoveSWAndNEC(H4, H4Array);
-            RemoveSWAndNEC(H5, H5Array);
-            RemoveSWAndNEC(H6, H6Array);
+            //RemoveSWAndNEC(H4, H4Array);
+            //RemoveSWAndNEC(H5, H5Array);
+            //RemoveSWAndNEC(H6, H6Array);
             RemoveSWAndNEC(P, ParaArray);
 
             //System.out.printf("Title: %s%n", Title);
@@ -120,31 +129,21 @@ public class Indexer implements Runnable{
             Stem(H6,"h6");
             Stem(P,"p");
             NormalizeTF();
-            System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
             InsertURLAnalysis();
             InsertWordsToCollection();
-            //DeleteHTMLFinished();
+            System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
+            System.out.printf("Remaining to index %d\n", RemainingToIndex());
         }
     }
 
     public long RemainingToIndex()
     {
-        synchronized (DBAdapeter3)
-        {
-            return DBAdapeter3.getIndexedCount();
-        }
+        return DBAdapeter.getIndexedCount();
     }
 
     public void ReadHTMLDoc()
     {
-        synchronized (DBAdapeter3)
-        {
-            HTMLDoc = DBAdapeter3.getDoctoIndex();
-            Title = HTMLDoc.get("Title").toString();
-            HTMLString = HTMLDoc.get("Document").toString();
-            URLtoParse = HTMLDoc.get("url").toString();
-            HTML = Jsoup.parse(HTMLString);
-        }
+        HTMLDoc = DBAdapeter.getDoctoIndex();
     }
 
 
@@ -153,7 +152,7 @@ public class Indexer implements Runnable{
         String newW;
         for(String w : Arr)
         {
-            newW = w.replaceAll("([^a-z0-9-/])", "");
+            newW = w.replaceAll("([^a-z])", "");
             if(!newW.equals(""))
             {
                 if(!StopWords.contains(newW))
@@ -178,6 +177,12 @@ public class Indexer implements Runnable{
             PStem.stem();
             WafterStem = new Word(PStem.getCurrent(), Pos);
             AddtoRes(WafterStem);
+        }
+        for(Word wrd : Res)
+        {
+            org.bson.Document Obj = new org.bson.Document("Word", wrd.text).append("TF", wrd.TF).append("Pos", wrd.Pos);
+            HTMLAnalysis.add(Obj);
+            ResWords.add(wrd.text);
         }
     }
 
@@ -220,41 +225,47 @@ public class Indexer implements Runnable{
 
     public void InsertWordsToCollection()
     {
-        for(Word w : Res)
+        for(String w : ResWords)
         {
-            synchronized (DBAdapeter1)
+            synchronized (WordLock)
             {
-                DBAdapeter1.addWord(w.text, URLtoParse,Title);
+                DBAdapeter.addWord(w, URLtoParse,Title);
             }
         }
     }
 
     public void InsertURLAnalysis()
     {
-        synchronized (DBAdapeter2)
+        synchronized (URLLock)
         {
-            DBAdapeter2.addURL(URLtoParse, Res, Title);
+            DBAdapeter.addURL(URLtoParse, HTMLAnalysis, Title);
         }
     }
 
     public void FinalizeIDF()
     {
-        synchronized (DBAdapeter1)
+        //synchronized (WordLock)
         {
-            DBAdapeter1.calculateIDF();
+            DBAdapeter.calculateIDF();
         }
     }
 
     public static void main(String args[])
     {
-        boolean Global = true;
+        boolean Global = false;
         boolean DropTable = false;
         MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);
         DBAdapeter.init(DropTable);
         int ThreadNumbers = 50;
         Thread myThreads[] = new Thread[ThreadNumbers];
+
+        Object WordLock = new Object();
+        Object URLLock = new Object();
+
+        LocalTime myObj = LocalTime.now();
+
         for (int j = 0; j < ThreadNumbers; j++) {
-            myThreads[j] = new Thread(new Indexer(DBAdapeter));
+            myThreads[j] = new Thread(new Indexer(DBAdapeter, WordLock, URLLock));
             myThreads[j].start();
         }
         for (int j = 0; j < ThreadNumbers; j++) {
@@ -264,8 +275,12 @@ public class Indexer implements Runnable{
                 e.printStackTrace();
             }
         }
-        Indexer index = new Indexer(DBAdapeter);
+        Indexer index = new Indexer(DBAdapeter, WordLock, URLLock);
         index.FinalizeIDF();
+
+        LocalTime myObj1 = LocalTime.now();
+        System.out.println(myObj);
+        System.out.println(myObj1);
     }
 }
 
