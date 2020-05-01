@@ -16,6 +16,7 @@ import org.jsoup.nodes.Entities;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 //import org.jsoup.nodes.Document;
 import java.io.IOException;
@@ -32,6 +33,7 @@ public class Crawler implements Runnable{
 	private int maxUnvisited = 20000;
 	private MongoDBAdapter DBAdapeter;
 	private Object UnvisitedLock;
+	private Set<String> visitedRobotSet;
 	
 	public void run() {
 		
@@ -41,39 +43,50 @@ public class Crawler implements Runnable{
 	public Crawler(MongoDBAdapter DBAdapeter,Object UnvisitedLock) {
 		this.DBAdapeter = DBAdapeter;
 		this.UnvisitedLock = UnvisitedLock;
+		this.visitedRobotSet = new HashSet<String>();
 	}
 	
 	public boolean addRobots(String URI,MongoDBAdapter DBAdapeter) {
-			String Robots = URI+"/robots.txt/";
-			String pattern = "Disallow: (.*)";
-			Pattern r = Pattern.compile(pattern);
-			List<String> pathsRegex = new ArrayList<String>();
+		URL url = null;
+		try {
+			url = new URL(URI);
+		} catch (IOException e) {
+			return false;
+		}
+		
+		String baseurl = url.getHost();
+		boolean newRobot = visitedRobotSet.add(baseurl);
+		if(!newRobot) return false;
+		
+		if (!baseurl.toLowerCase().startsWith("http://")) baseurl = "http://" + baseurl;
+		String Robots = URI+"/robots.txt/";
+		
+		String pattern = "Disallow: (.*)";
+		Pattern r = Pattern.compile(pattern);
+		List<String> pathsRegex = new ArrayList<String>();
 
-			try(BufferedReader in = new BufferedReader(new InputStreamReader(new URL(Robots).openStream()))) {
-		        String line = null;
-		        while((line = in.readLine()) != null) {
-		        	
-		        	if(line.equalsIgnoreCase("User-agent: *")) {
+		try(BufferedReader in = new BufferedReader(new InputStreamReader(new URL(Robots).openStream()))) {
+	        String line = null;
+	        while((line = in.readLine()) != null) {
+	        	
+	        	if(line.equalsIgnoreCase("User-agent: *")) {
+	        		
+		        	while ((line = in.readLine()) != null) {
 		        		
-			        	while ((line = in.readLine()) != null) {
-			        		
-			        		if(line.contains("Disallow:")) {	
-			        			Matcher m = r.matcher(line.toString());
-			        			
-			        			if (m.find( )) {
-			        				
-			        				String Temp = m.group(1).replace("*", ".*");
-			        				pathsRegex.add(URI+Temp);
+		        		if(line.contains("Disallow:")) {	
+		        			Matcher m = r.matcher(line.toString());
+		        			
+		        			if (m.find( )) {
+		        				String Temp = m.group(1).replace("*", ".*");
+		        				pathsRegex.add(URI+Temp);
 			        			}
-			        		}
-			        		else if (line.contains("User-agent"))
-			        			break;
-			        	}
+		        		} else if (line.contains("User-agent")) break;	
 		        	}
-		        }
-		    } catch (IOException e) {
-		        return false;
-		    }
+	        	}
+	        }
+	    } catch (IOException e) {
+	        return false;
+	    }
 		if(pathsRegex.size() != 0)
 			DBAdapeter.addRobots(pathsRegex);
 		return true;
@@ -149,9 +162,9 @@ public class Crawler implements Runnable{
 	    }
 	
 	public static void main( String args[] ) {
-		boolean Global = false;
+		boolean Global = true;
 		boolean DropTable = true;
-		int ThreadNumbers = 200;
+		int ThreadNumbers = 50;
 		Object UnvisitedLock = new Object();
 		
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);
@@ -170,6 +183,6 @@ public class Crawler implements Runnable{
 				e.printStackTrace();
 			} 
 		}
-	}	
+	}		
 
 }
