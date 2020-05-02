@@ -102,9 +102,9 @@ public class Indexer implements Runnable{
             RemoveSWAndNEC(H1, H1Array);
             RemoveSWAndNEC(H2, H2Array);
             RemoveSWAndNEC(H3, H3Array);
-            //RemoveSWAndNEC(H4, H4Array);
-            //RemoveSWAndNEC(H5, H5Array);
-            //RemoveSWAndNEC(H6, H6Array);
+            RemoveSWAndNEC(H4, H4Array);
+            RemoveSWAndNEC(H5, H5Array);
+            RemoveSWAndNEC(H6, H6Array);
             RemoveSWAndNEC(P, ParaArray);
 
             //System.out.printf("Title: %s%n", Title);
@@ -225,9 +225,9 @@ public class Indexer implements Runnable{
 
     public void InsertWordsToCollection()
     {
-        for(String w : ResWords)
+        synchronized (WordLock)
         {
-            synchronized (WordLock)
+            for(String w : ResWords)
             {
                 DBAdapeter.addWord(w, URLtoParse,Title);
             }
