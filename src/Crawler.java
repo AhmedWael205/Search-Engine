@@ -145,7 +145,7 @@ public class Crawler implements Runnable{
 	                        .escapeMode(Entities.EscapeMode.xhtml);
 	            	
 	                String AllContent = document.toString();
-	            	String Title = document.select("title").toString();
+	            	String Title = document.title();
 	            	String Text = document.text().toString();
 	            	
 	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text)) {
