@@ -320,12 +320,12 @@ public class MongoDBAdapter {
 		}
 	}
 
-	public void addURL(String URL, ArrayList<Document> HTMLAnalysis, String Title)
+	public void addURL(String URL, ArrayList<Document> HTMLAnalysis, String Title, String Summary)
 	{
 		Document found = URLsCollection.find(Filters.eq("URL",URL)).first();
 		if(found == null)
 		{
-			Document newURL = new Document("URL", URL).append("Title", Title).append("HTML Analysis", HTMLAnalysis);
+			Document newURL = new Document("URL", URL).append("Title", Title).append("HTML Analysis", HTMLAnalysis).append("Summary", Summary);
 			URLsCollection.insertOne(newURL);
 //			System.out.println("Inserted new URL into table");
 		}
@@ -345,7 +345,7 @@ public class MongoDBAdapter {
 			ArrayList<String> URLS = (ArrayList<String>) Doc.get("URLs");
 			String word = Doc.get("Word").toString();
 			//Note: Don't know how accurate it is maybe need to change later
-			double IDF = (double)URLS.size()/MAX_NO_DOC;
+			double IDF = Math.log((double)URLS.size()/MAX_NO_DOC);
 			Document Query = new Document("Word", word);
 			Document newDoc = new Document("IDF", IDF);
 			Document UpdatedDoc = new Document("$set", newDoc);

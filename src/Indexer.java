@@ -10,13 +10,18 @@ import java.util.Set;
 import org.jsoup.nodes.Document;
 import org.tartarus.snowball.ext.PorterStemmer;
 
-public class Indexer implements Runnable{
+public class Indexer implements Runnable
+{
     public String URLtoParse;
     public ArrayList<String> StopWords;
+
     //Array to accumulate Res of ALL Stemmed Words
     public ArrayList<Word> Res;
-    String Title;
+
+    public String Title;
     public Document HTML;
+    public String Summary;
+
     //Access Words Collection
     private MongoDBAdapter DBAdapeter;
 
@@ -43,6 +48,9 @@ public class Indexer implements Runnable{
 
         WordLock = WL;
         URLLock = UL;
+
+        Title = "";
+        Summary = "";
 
         ReadStopWords();
     }
@@ -71,7 +79,8 @@ public class Indexer implements Runnable{
             HTML = Jsoup.parse(HTMLString);
 
             Title = HTML.title();
-            String body = HTML.body().text().toLowerCase();
+            String body = HTML.body().text();
+
             String Header1 = HTML.getElementsByTag("h1").text().toLowerCase();
             String Header2 = HTML.getElementsByTag("h2").text().toLowerCase();
             String Header3 = HTML.getElementsByTag("h3").text().toLowerCase();
@@ -79,7 +88,7 @@ public class Indexer implements Runnable{
             String Header5 = HTML.getElementsByTag("h5").text().toLowerCase();
             String Header6 = HTML.getElementsByTag("h6").text().toLowerCase();
             String Paragragh = HTML.getElementsByTag("p").text().toLowerCase();
-            String [] BodyArray = body.split(" ");
+
             String [] H1Array = Header1.split(" ");
             String [] H2Array = Header2.split(" ");
             String [] H3Array = Header3.split(" ");
@@ -87,7 +96,7 @@ public class Indexer implements Runnable{
             String [] H5Array = Header5.split(" ");
             String [] H6Array = Header6.split(" ");
             String [] ParaArray = Paragragh.split(" ");
-            ArrayList<String> Body = new ArrayList<>();
+
             ArrayList<String> H1 = new ArrayList<>();
             ArrayList<String> H2 = new ArrayList<>();
             ArrayList<String> H3 = new ArrayList<>();
@@ -98,7 +107,6 @@ public class Indexer implements Runnable{
 
             //Only Add Words to the List removing everything that's not a letter or a number
             //While also NOT ADDING Stop Words
-            RemoveSWAndNEC(Body, BodyArray);
             RemoveSWAndNEC(H1, H1Array);
             RemoveSWAndNEC(H2, H2Array);
             RemoveSWAndNEC(H3, H3Array);
@@ -120,7 +128,6 @@ public class Indexer implements Runnable{
             //System.out.printf("P after removing Stop Words and Special Characters: %s\n", P);
 
             //Stemming Words and Calculating their TF
-            Stem(Body,"body");
             Stem(H1, "h1");
             Stem(H2,"h2");
             Stem(H3, "h3");
@@ -129,9 +136,19 @@ public class Indexer implements Runnable{
             Stem(H6,"h6");
             Stem(P,"p");
             NormalizeTF();
+
+            if(body.length() <= 150)
+            {
+                Summary = body;
+            }
+            else
+            {
+                Summary = body.substring(0,150) + "...";
+            }
+
             InsertURLAnalysis();
             InsertWordsToCollection();
-            System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
+            //System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
             System.out.printf("Remaining to index %d\n", RemainingToIndex());
         }
     }
@@ -238,7 +255,10 @@ public class Indexer implements Runnable{
     {
         synchronized (URLLock)
         {
-            DBAdapeter.addURL(URLtoParse, HTMLAnalysis, Title);
+            if(HTMLAnalysis.size() != 0 && HTMLAnalysis != null)
+            {
+                DBAdapeter.addURL(URLtoParse, HTMLAnalysis, Title, Summary);
+            }
         }
     }
 
@@ -256,7 +276,7 @@ public class Indexer implements Runnable{
         boolean DropTable = false;
         MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);
         DBAdapeter.init(DropTable);
-        int ThreadNumbers = 50;
+        int ThreadNumbers = 10;
         Thread myThreads[] = new Thread[ThreadNumbers];
 
         Object WordLock = new Object();
