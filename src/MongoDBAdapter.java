@@ -74,7 +74,6 @@ public class MongoDBAdapter {
 		      VisitedCollection = database.getCollection("Visited");
 		      RobotCollection = database.getCollection("Robot");
 		      WordsCollection = database.getCollection("Words");
-		      WordsCollection.createIndex(Indexes.text("Word"));
 		      URLsCollection = database.getCollection("URLs");
 		      URLsCollection.createIndex(Indexes.text("URL"));
 		      
