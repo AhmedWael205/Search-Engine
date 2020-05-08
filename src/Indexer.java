@@ -21,6 +21,15 @@ public class Indexer implements Runnable
     public String Title;
     public Document HTML;
     public String Summary;
+    public ArrayList<org.bson.Document> BD;
+    public ArrayList<org.bson.Document> H1D;
+    public ArrayList<org.bson.Document> H2D;
+    public ArrayList<org.bson.Document> H3D;
+    public ArrayList<org.bson.Document> H4D;
+    public ArrayList<org.bson.Document> H5D;
+    public ArrayList<org.bson.Document> H6D;
+    public ArrayList<org.bson.Document> PD;
+
 
     //Access Words Collection
     private MongoDBAdapter DBAdapeter;
@@ -31,8 +40,7 @@ public class Indexer implements Runnable
     public org.bson.Document HTMLDoc;
     public String HTMLString;
 
-    public ArrayList<org.bson.Document> HTMLAnalysis;
-    public Set<String> ResWords;
+
 
     @Override
     public void run() {
@@ -43,14 +51,20 @@ public class Indexer implements Runnable
     {
         DBAdapeter = DBA;
         Res = new ArrayList<>();
-        HTMLAnalysis = new ArrayList<org.bson.Document>();
-        ResWords = new HashSet<>();
 
         WordLock = WL;
         URLLock = UL;
 
         Title = "";
         Summary = "";
+        BD = new ArrayList<>();
+        H1D = new ArrayList<>();
+        H2D = new ArrayList<>();
+        H3D = new ArrayList<>();
+        H4D = new ArrayList<>();
+        H5D = new ArrayList<>();
+        H6D = new ArrayList<>();
+        PD = new ArrayList<>();
 
         ReadStopWords();
     }
@@ -72,6 +86,7 @@ public class Indexer implements Runnable
     {
         while(RemainingToIndex() >= 1)
         {
+            ClearAll();
             ReadHTMLDoc();
 
             HTMLString = HTMLDoc.get("Document").toString();
@@ -80,7 +95,7 @@ public class Indexer implements Runnable
 
             Title = HTML.title();
             String body = HTML.body().text();
-
+            String smbody = body.toLowerCase();
             String Header1 = HTML.getElementsByTag("h1").text().toLowerCase();
             String Header2 = HTML.getElementsByTag("h2").text().toLowerCase();
             String Header3 = HTML.getElementsByTag("h3").text().toLowerCase();
@@ -89,6 +104,7 @@ public class Indexer implements Runnable
             String Header6 = HTML.getElementsByTag("h6").text().toLowerCase();
             String Paragragh = HTML.getElementsByTag("p").text().toLowerCase();
 
+            String [] BodyArray = smbody.split(" ");
             String [] H1Array = Header1.split(" ");
             String [] H2Array = Header2.split(" ");
             String [] H3Array = Header3.split(" ");
@@ -97,6 +113,7 @@ public class Indexer implements Runnable
             String [] H6Array = Header6.split(" ");
             String [] ParaArray = Paragragh.split(" ");
 
+            ArrayList<String> Body = new ArrayList<>();
             ArrayList<String> H1 = new ArrayList<>();
             ArrayList<String> H2 = new ArrayList<>();
             ArrayList<String> H3 = new ArrayList<>();
@@ -107,6 +124,7 @@ public class Indexer implements Runnable
 
             //Only Add Words to the List removing everything that's not a letter or a number
             //While also NOT ADDING Stop Words
+            RemoveSWAndNEC(Body, BodyArray);
             RemoveSWAndNEC(H1, H1Array);
             RemoveSWAndNEC(H2, H2Array);
             RemoveSWAndNEC(H3, H3Array);
@@ -128,13 +146,14 @@ public class Indexer implements Runnable
             //System.out.printf("P after removing Stop Words and Special Characters: %s\n", P);
 
             //Stemming Words and Calculating their TF
-            Stem(H1, "h1");
-            Stem(H2,"h2");
-            Stem(H3, "h3");
-            Stem(H4,"h4");
-            Stem(H5,"h5");
-            Stem(H6,"h6");
-            Stem(P,"p");
+            Stem(Body, BD);
+            Stem(H1, H1D);
+            Stem(H2, H2D);
+            Stem(H3, H3D);
+            Stem(H4, H4D);
+            Stem(H5, H5D);
+            Stem(H6, H6D);
+            Stem(P, PD);
             NormalizeTF();
 
             if(body.length() <= 150)
@@ -145,12 +164,25 @@ public class Indexer implements Runnable
             {
                 Summary = body.substring(0,150) + "...";
             }
-
             InsertURLAnalysis();
             InsertWordsToCollection();
             //System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
-            System.out.printf("Remaining to index %d\n", RemainingToIndex());
+            //System.out.printf("Remaining to index %d\n", RemainingToIndex());
         }
+        //InsertWordsToCollection();
+    }
+
+    public void ClearAll()
+    {
+        Res.clear();
+        BD.clear();
+        H1D.clear();
+        H2D.clear();
+        H3D.clear();
+        H4D.clear();
+        H5D.clear();
+        H6D.clear();
+        PD.clear();
     }
 
     public long RemainingToIndex()
@@ -180,7 +212,7 @@ public class Indexer implements Runnable
         }
     }
 
-    public void Stem(ArrayList<String> Words, String Pos)
+    public void Stem(ArrayList<String> Words, ArrayList<org.bson.Document> HTMLAnalysis)
     {
         if(Words == null)
         {
@@ -192,14 +224,13 @@ public class Indexer implements Runnable
         {
             PStem.setCurrent(w);
             PStem.stem();
-            WafterStem = new Word(PStem.getCurrent(), Pos);
+            WafterStem = new Word(PStem.getCurrent());
             AddtoRes(WafterStem);
         }
         for(Word wrd : Res)
         {
-            org.bson.Document Obj = new org.bson.Document("Word", wrd.text).append("TF", wrd.TF).append("Pos", wrd.Pos);
+            org.bson.Document Obj = new org.bson.Document("Word", wrd.text).append("TF", wrd.TF);
             HTMLAnalysis.add(Obj);
-            ResWords.add(wrd.text);
         }
     }
 
@@ -208,7 +239,7 @@ public class Indexer implements Runnable
         int i = 0;
         for(Word r : Res)
         {
-            if(r.text.equals(WafterStem.text) && r.Pos.equals(WafterStem.Pos))
+            if(r.text.equals(WafterStem.text))
             {
                 return i;
             }
@@ -244,9 +275,9 @@ public class Indexer implements Runnable
     {
         synchronized (WordLock)
         {
-            for(String w : ResWords)
+            for(Word w : Res)
             {
-                DBAdapeter.addWord(w, URLtoParse,Title);
+                DBAdapeter.addWord(w.text);
             }
         }
     }
@@ -255,10 +286,7 @@ public class Indexer implements Runnable
     {
         synchronized (URLLock)
         {
-            if(HTMLAnalysis.size() != 0 && HTMLAnalysis != null)
-            {
-                DBAdapeter.addURL(URLtoParse, HTMLAnalysis, Title, Summary);
-            }
+            DBAdapeter.addURL(URLtoParse, Title, Summary, BD, H1D, H2D, H3D, H4D, H5D, H6D, PD);
         }
     }
 
@@ -295,12 +323,16 @@ public class Indexer implements Runnable
                 e.printStackTrace();
             }
         }
+        LocalTime myObj1 = LocalTime.now();
+
+        System.out.println(myObj);
+        System.out.println(myObj1);
+
         Indexer index = new Indexer(DBAdapeter, WordLock, URLLock);
         index.FinalizeIDF();
 
-        LocalTime myObj1 = LocalTime.now();
-        System.out.println(myObj);
-        System.out.println(myObj1);
+        LocalTime myObj2 = LocalTime.now();
+        System.out.println(myObj2);
     }
 }
 

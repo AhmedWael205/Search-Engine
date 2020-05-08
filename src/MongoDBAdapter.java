@@ -282,50 +282,34 @@ public class MongoDBAdapter {
 		return false;
 	}
 	
-	public void addWord(String Word, String URL, String Title)
+	public void addWord(String Word)
 	{
 		Document found = WordsCollection.find(Filters.eq("Word",Word)).first();
 		if(found == null)
 		{
 			//Not Found hence only add to Collection
-			ArrayList<Document> URLList = new ArrayList<>();
-			Document Obj = new Document("Url", URL).append("Title", Title);
-			URLList.add(Obj);
-			Document newWord = new Document("Word", Word).append("URLs", URLList).append("IDF", 0);
+			Document newWord = new Document("Word", Word).append("IDF", 0);
 			WordsCollection.insertOne(newWord);
-//			System.out.println("Inserted new Word into table");
 		}
 		else
 		{
-			//Found; hence we need to update URL list.
+			//Found; hence we need to update IDF.
 			Document Query = new Document("Word", Word);
-			Document WordToUpdate = WordsCollection.find(Filters.eq("Word", Word)).first();
-			ArrayList<Document> urls = (ArrayList<Document>) WordToUpdate.get("URLs");
-			Set<Document> URLs = new HashSet<Document>(urls);
-			//System.out.println(URLs);
-			Document URLtoAdd = new Document("Url", URL).append("Title", Title);
-			boolean added = URLs.add(URLtoAdd);
-			//We need to make sure the URL wasn't previously added
-			if(added)
-			{
-				Document newDoc = new Document("URLs", URLs);
-				Document UpdatedDoc = new Document("$set", newDoc);
-				WordsCollection.updateOne(Query,UpdatedDoc);
-//				System.out.println("Updated URL List in Word");
-			}
-			else
-			{
-//				System.out.println("URL already exists in URL List. No Update!");
-			}
+			int IDF = (int) found.get("IDF");
+
+			Document newDoc = new Document("IDF", IDF+1);
+			Document UpdatedDoc = new Document("$set", newDoc);
+			WordsCollection.updateOne(Query,UpdatedDoc);
 		}
 	}
 
-	public void addURL(String URL, ArrayList<Document> HTMLAnalysis, String Title, String Summary)
+	public void addURL(String URL, String Title, String Summary, ArrayList<Document> Body, ArrayList<Document> H1,  ArrayList<Document> H2, ArrayList<Document> H3,
+					   ArrayList<Document> H4, ArrayList<Document> H5, ArrayList<Document> H6, ArrayList<Document> P)
 	{
 		Document found = URLsCollection.find(Filters.eq("URL",URL)).first();
 		if(found == null)
 		{
-			Document newURL = new Document("URL", URL).append("Title", Title).append("HTML Analysis", HTMLAnalysis).append("Summary", Summary);
+			Document newURL = new Document("URL", URL).append("Title", Title).append("Summary", Summary).append("Body", Body).append("H1",H1).append("H2",H2).append("H3",H3).append("H4",H4).append("H5",H5).append("H6",H6).append("P",P);
 			URLsCollection.insertOne(newURL);
 //			System.out.println("Inserted new URL into table");
 		}
@@ -342,10 +326,10 @@ public class MongoDBAdapter {
 		MAX_NO_DOC = visitedCount();
 		for(Document Doc : iterable)
 		{
-			ArrayList<String> URLS = (ArrayList<String>) Doc.get("URLs");
+			int IDF = (int) Doc.get("IDF");
 			String word = Doc.get("Word").toString();
 			//Note: Don't know how accurate it is maybe need to change later
-			double IDF = Math.log((double)URLS.size()/MAX_NO_DOC);
+			double idf = Math.log((double)IDF/MAX_NO_DOC);
 			Document Query = new Document("Word", word);
 			Document newDoc = new Document("IDF", IDF);
 			Document UpdatedDoc = new Document("$set", newDoc);
