@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.mongodb.client.model.Indexes;
 import org.bson.Document;
 import org.jsoup.Jsoup;
 
@@ -73,7 +74,9 @@ public class MongoDBAdapter {
 		      VisitedCollection = database.getCollection("Visited");
 		      RobotCollection = database.getCollection("Robot");
 		      WordsCollection = database.getCollection("Words");
+		      WordsCollection.createIndex(Indexes.text("Word"));
 		      URLsCollection = database.getCollection("URLs");
+		      URLsCollection.createIndex(Indexes.text("URL"));
 		      
 		      if (DropTables) {
 			      //Reading Initial Seed Set from File
