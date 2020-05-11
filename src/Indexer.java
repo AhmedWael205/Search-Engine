@@ -21,6 +21,7 @@ public class Indexer implements Runnable
     public String Title;
     public Document HTML;
     public String Summary;
+    public String Geo;
     public ArrayList<org.bson.Document> BD;
     public ArrayList<org.bson.Document> H1D;
     public ArrayList<org.bson.Document> H2D;
@@ -57,6 +58,7 @@ public class Indexer implements Runnable
 
         Title = "";
         Summary = "";
+        Geo = "";
         BD = new ArrayList<>();
         H1D = new ArrayList<>();
         H2D = new ArrayList<>();
@@ -95,6 +97,9 @@ public class Indexer implements Runnable
 
             Title = HTML.title();
             String body = HTML.body().text();
+            Geo = HTML.location();
+            //For phrase searching purposes :D
+            Summary = body;
             String smbody = body.toLowerCase();
             String Header1 = HTML.getElementsByTag("h1").text().toLowerCase();
             String Header2 = HTML.getElementsByTag("h2").text().toLowerCase();
@@ -156,18 +161,19 @@ public class Indexer implements Runnable
             Stem(P, PD);
             NormalizeTF();
 
-            if(body.length() <= 150)
-            {
-                Summary = body;
-            }
-            else
-            {
-                Summary = body.substring(0,150) + "...";
-            }
+//            if(body.length() <= 150)
+//            {
+//                Summary = body;
+//            }
+//            else
+//            {
+//                Summary = body.substring(0,150) + "...";
+//            }
+
             InsertURLAnalysis();
             InsertWordsToCollection();
             //System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
-            //System.out.printf("Remaining to index %d\n", RemainingToIndex());
+            System.out.printf("Remaining to index %d\n", RemainingToIndex());
         }
         //InsertWordsToCollection();
     }
@@ -277,7 +283,7 @@ public class Indexer implements Runnable
         {
             for(Word w : Res)
             {
-                DBAdapeter.addWord(w.text);
+                DBAdapeter.addWord(w.text,URLtoParse);
             }
         }
     }
@@ -311,6 +317,7 @@ public class Indexer implements Runnable
         Object URLLock = new Object();
 
         LocalTime myObj = LocalTime.now();
+        System.out.println(myObj);
 
         for (int j = 0; j < ThreadNumbers; j++) {
             myThreads[j] = new Thread(new Indexer(DBAdapeter, WordLock, URLLock));
@@ -325,7 +332,7 @@ public class Indexer implements Runnable
         }
         LocalTime myObj1 = LocalTime.now();
 
-        System.out.println(myObj);
+
         System.out.println(myObj1);
 
         Indexer index = new Indexer(DBAdapeter, WordLock, URLLock);

@@ -1,4 +1,5 @@
 import java.io.*;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -6,14 +7,11 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.mongodb.*;
 import com.mongodb.client.model.Indexes;
 import org.bson.Document;
 import org.jsoup.Jsoup;
 
-import com.mongodb.Block;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.MongoTimeoutException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -75,7 +73,7 @@ public class MongoDBAdapter {
 		      RobotCollection = database.getCollection("Robot");
 		      WordsCollection = database.getCollection("Words");
 		      URLsCollection = database.getCollection("URLs");
-		      URLsCollection.createIndex(Indexes.text("URL"));
+		      //URLsCollection.createIndex(Indexes.text("URL"));
 		      
 		      if (DropTables) {
 			      //Reading Initial Seed Set from File
@@ -284,24 +282,40 @@ public class MongoDBAdapter {
 		return false;
 	}
 	
-	public void addWord(String Word)
+	public void addWord(String Word, String URL)
 	{
 		Document found = WordsCollection.find(Filters.eq("Word",Word)).first();
 		if(found == null)
 		{
 			//Not Found hence only add to Collection
-			Document newWord = new Document("Word", Word).append("IDF", 0);
+			ArrayList<Document> URLList = new ArrayList<>();
+			Document Obj = new Document("Url", URL);
+			URLList.add(Obj);
+			Document newWord = new Document("Word", Word).append("URLs", URLList).append("IDF", 0);
 			WordsCollection.insertOne(newWord);
 		}
 		else
 		{
 			//Found; hence we need to update IDF.
 			Document Query = new Document("Word", Word);
-			int IDF = (int) found.get("IDF");
-
-			Document newDoc = new Document("IDF", IDF+1);
-			Document UpdatedDoc = new Document("$set", newDoc);
-			WordsCollection.updateOne(Query,UpdatedDoc);
+			Document WordToUpdate = WordsCollection.find(Filters.eq("Word", Word)).first();
+			ArrayList<Document> urls = (ArrayList<Document>) WordToUpdate.get("URLs");
+			Set<Document> URLs = new HashSet<Document>(urls);
+			//System.out.println(URLs);
+			Document URLtoAdd = new Document("Url", URL);
+			boolean added = URLs.add(URLtoAdd);
+			//We need to make sure the URL wasn't previously added
+			if(added)
+			{
+				Document newDoc = new Document("URLs", URLs);
+				Document UpdatedDoc = new Document("$set", newDoc);
+				WordsCollection.updateOne(Query,UpdatedDoc);
+//				System.out.println("Updated URL List in Word");
+			}
+			else
+			{
+//				System.out.println("URL already exists in URL List. No Update!");
+			}
 		}
 	}
 
@@ -328,10 +342,11 @@ public class MongoDBAdapter {
 		MAX_NO_DOC = visitedCount();
 		for(Document Doc : iterable)
 		{
-			int IDF = (int) Doc.get("IDF");
+			ArrayList<String> URLS = (ArrayList<String>) Doc.get("URLs");
+			//int idf = (int) Doc.get("IDF");
 			String word = Doc.get("Word").toString();
 			//Note: Don't know how accurate it is maybe need to change later
-			double idf = Math.log((double)IDF/MAX_NO_DOC);
+			double IDF = Math.log((double)URLS.size()/MAX_NO_DOC);
 			Document Query = new Document("Word", word);
 			Document newDoc = new Document("IDF", IDF);
 			Document UpdatedDoc = new Document("$set", newDoc);
@@ -340,8 +355,79 @@ public class MongoDBAdapter {
 		System.out.println("Finished Calculating IDFs");
 	}
 
+	public ArrayList<String> WordSearchURL(String Word)
+	{
+		ArrayList<String> Res = new ArrayList<>();
+		Document found = WordsCollection.find(Filters.eq("Word",Word)).first();
+		if (found == null)
+		{
+			Res = null;
+		}
+		else
+		{
+			ArrayList<Document> URLs = (ArrayList<Document>) found.get("URLs");
+			for (Document url : URLs)
+			{
+				Res.add(url.get("Url").toString());
+			}
+		}
+		return Res;
+	}
 
-	
+	public double ReturnIDF(String Word)
+	{
+		double Res = 10000000;
+		Document found = WordsCollection.find(Filters.eq("Word", Word)).first();
+		if (found == null) {
+			return Res;
+		} else {
+			return (double)found.get("IDF");
+		}
+	}
+
+	public QueryResult QueryProcessorRes(String Word, String URL, double IDF)
+	{
+		Document found = URLsCollection.find(Filters.eq("URL", URL)).first();
+		String Title = (String) found.get("Title");
+		String Summary = (String) found.get("Summary");
+		ArrayList<Document> Body = (ArrayList<Document>) found.get("Body");
+		double BTF = RetTF(Body,Word);
+		ArrayList<Document> H1 = (ArrayList<Document>) found.get("H1");
+		double H1TF = RetTF(H1,Word);
+		ArrayList<Document> H2 = (ArrayList<Document>) found.get("H2");
+		double H2TF = RetTF(H2,Word);
+		ArrayList<Document> H3 = (ArrayList<Document>) found.get("H13");
+		double H3TF = RetTF(H3,Word);
+		ArrayList<Document> H4 = (ArrayList<Document>) found.get("H4");
+		double H4TF = RetTF(H4,Word);
+		ArrayList<Document> H5 = (ArrayList<Document>) found.get("H5");
+		double H5TF = RetTF(H5,Word);
+		ArrayList<Document> H6 = (ArrayList<Document>) found.get("H6");
+		double H6TF = RetTF(H6,Word);
+		ArrayList<Document> P = (ArrayList<Document>) found.get("P");
+		double PTF = RetTF(P,Word);
+		return new QueryResult(Word,BTF,H1TF,H2TF,H3TF,H4TF,H5TF,H6TF,PTF,IDF,URL,Title,Summary);
+	}
+
+	public double RetTF(ArrayList<Document> Arr, String Word)
+	{
+		double TF = 0.0;
+		if(Arr == null)
+		{
+			return TF;
+		}
+		else{
+			for(Document doc:Arr)
+			{
+				if(doc.get("Word").toString().equals(Word))
+				{
+					TF = Double.valueOf(doc.get("TF").toString());
+				}
+			}
+			return TF;
+		}
+	}
+
 	public static void main( String args[] ) {  
 
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);

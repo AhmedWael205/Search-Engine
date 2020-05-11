@@ -162,7 +162,7 @@ public class Crawler implements Runnable{
 	    }
 	
 	public static void main( String args[] ) {
-		boolean Global = true;
+		boolean Global = false;
 		boolean DropTable = true;
 		int ThreadNumbers = 50;
 		Object UnvisitedLock = new Object();
