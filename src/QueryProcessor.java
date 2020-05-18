@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class QueryProcessor {
     //Access Words Collection
@@ -12,11 +14,15 @@ public class QueryProcessor {
     public ArrayList<String> StopWords;
     public ArrayList<String> SearchWords;
     public String SearchPhrase;
+    public ArrayList<QueryResult> QPRes;
+    public ArrayList<PhraseResult> PSRes;
 
     public QueryProcessor(MongoDBAdapter DBA) {
         DBAdapeter = DBA;
         SearchWords = new ArrayList<>();
         SearchPhrase = "";
+        QPRes = new ArrayList<>();
+        PSRes = new ArrayList<>();
         ReadStopWords();
     }
 
@@ -64,26 +70,18 @@ public class QueryProcessor {
         String [] QueryArray = Query.split(" ");
         for(String W : QueryArray)
         {
-            if(W.matches("([a-zA-Z0-9-?])*"))
-            {
-                SearchWords.add(W);
-            }
-            else
-            {
-                if(SearchPhrase == "")
-                {
-                    SearchPhrase = SearchPhrase + W;
-                }
-                else
-                {
-                    SearchPhrase = SearchPhrase + " " + W;
-                }
-                SearchWords.add(W.replaceAll("([^a-zA-Z ])", ""));
-            }
+            SearchWords.add(W.replaceAll("([^a-zA-Z ])", ""));
+        }
+        String pattern = "\"([^\"]*)\"";
+        Pattern r = Pattern.compile(pattern);
+        Matcher m = r.matcher(Query);
+        if(m.find())
+        {
+            SearchPhrase = m.group();
         }
         SearchPhrase = SearchPhrase.replaceAll("([^a-zA-Z ])", "");
-        //System.out.println(SearchPhrase);
-        //System.out.println(SearchWords);
+        System.out.println(SearchPhrase);
+        System.out.println(SearchWords);
     }
 
     public ArrayList<String> URLs(String Word)
@@ -101,6 +99,11 @@ public class QueryProcessor {
         return DBAdapeter.QueryProcessorRes(Word, URL, IDF);
     }
 
+    public ArrayList<PhraseResult> PhraseResult(ArrayList<String> URLs)
+    {
+        return DBAdapeter.PhraseSearchRes(SearchPhrase, URLs);
+    }
+
     public void QuerySearch(String Query) {
 
         //TODO 1: Remove the stop words
@@ -113,16 +116,20 @@ public class QueryProcessor {
         Stem(StemmedQ);
         //TODO 3: Search the DB in URL Collection for the stemmed word and Return the IDF and TF and URL of the words
         //Word Search
-        ArrayList<String> Res = new ArrayList<>();
-        ArrayList<QueryResult> QPRes = new ArrayList<>();
+        ArrayList<String> WordSearchUrls = new ArrayList<>();
+        ArrayList<String> PhraseSearchUrls = new ArrayList<>();
         double IDF;
         for (String word : StemmedQ) {
-            Res.clear();
+            WordSearchUrls.clear();
             IDF = RetIDF(word);
             if(IDF != 10000000)
             {
-                Res.addAll(URLs(word));
-                for(String url : Res)
+                WordSearchUrls.addAll(URLs(word));
+                if(SearchPhrase.contains(word))
+                {
+                    PhraseSearchUrls.addAll(URLs(word));
+                }
+                for(String url : WordSearchUrls)
                 {
                     QPRes.add(QPSearch(word, url, IDF));
                 }
@@ -134,7 +141,9 @@ public class QueryProcessor {
             }
         }
         //TODO 4: Phrase Search
-
+        PSRes.addAll(PhraseResult(PhraseSearchUrls));
+//        System.out.println(PSRes.get(0).URL);
+//        System.out.println(PSRes.size());
     }
 
     public static void main(String args[])

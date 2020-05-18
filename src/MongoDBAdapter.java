@@ -409,6 +409,22 @@ public class MongoDBAdapter {
 		return new QueryResult(Word,BTF,H1TF,H2TF,H3TF,H4TF,H5TF,H6TF,PTF,IDF,URL,Title,Summary);
 	}
 
+	public ArrayList<PhraseResult> PhraseSearchRes(String SearchPhrase, ArrayList<String> URLs)
+	{
+		ArrayList<PhraseResult> Res = new ArrayList<>();
+		for(String url: URLs)
+		{
+			Document found = URLsCollection.find(Filters.eq("URL", url)).first();
+			String Summary = (String) found.get("Summary");
+			String Title = (String) found.get("Title");
+			if(Summary.contains(SearchPhrase))
+			{
+				Res.add(new PhraseResult(SearchPhrase, url, Summary, Title));
+			}
+		}
+		return Res;
+	}
+
 	public double RetTF(ArrayList<Document> Arr, String Word)
 	{
 		double TF = 0.0;
