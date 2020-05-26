@@ -4,16 +4,20 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.tartarus.snowball.ext.PorterStemmer;
+import java.util.Arrays;
 
 public class Indexer implements Runnable
 {
     public String URLtoParse;
     public ArrayList<String> StopWords;
+    public ArrayList<String> GeoWords;
+    public ArrayList<String> URLExtension;
+    public ArrayList<String> Countries;
 
     //Array to accumulate Res of ALL Stemmed Words
     public ArrayList<Word> Res;
@@ -30,6 +34,7 @@ public class Indexer implements Runnable
     public ArrayList<org.bson.Document> H5D;
     public ArrayList<org.bson.Document> H6D;
     public ArrayList<org.bson.Document> PD;
+    public ArrayList<org.bson.Document> Images;
 
 
     //Access Words Collection
@@ -69,6 +74,7 @@ public class Indexer implements Runnable
         PD = new ArrayList<>();
 
         ReadStopWords();
+        ReadGeoWords();
     }
 
     public void ReadStopWords()
@@ -81,6 +87,33 @@ public class Indexer implements Runnable
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public void ReadGeoWords()
+    {
+        GeoWords = new ArrayList<>();
+        URLExtension = new ArrayList<>();
+        Countries = new ArrayList<>();
+        try(BufferedReader reader = new BufferedReader(new FileReader((".\\Geo.txt")))){
+            while(reader.ready())
+            {
+                GeoWords.add(reader.readLine());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        ArrayList<String> GeoArray = new ArrayList<>();
+        for(String w : GeoWords)
+        {
+            GeoArray.addAll(Arrays.asList(w.split(" - ")));
+        }
+        for (int i = 0; i < GeoArray.size(); i++)
+        {
+            if (i % 2 == 0)
+                URLExtension.add(GeoArray.get(i));
+            else
+                Countries.add(GeoArray.get(i));
         }
     }
 
@@ -97,7 +130,8 @@ public class Indexer implements Runnable
 
             Title = HTML.title();
             String body = HTML.body().text();
-            Geo = HTML.location();
+            Geo = GetCountry(URLtoParse);
+
             //For phrase searching purposes :D
             Summary = body;
             String smbody = body.toLowerCase();
@@ -108,6 +142,23 @@ public class Indexer implements Runnable
             String Header5 = HTML.getElementsByTag("h5").text().toLowerCase();
             String Header6 = HTML.getElementsByTag("h6").text().toLowerCase();
             String Paragragh = HTML.getElementsByTag("p").text().toLowerCase();
+            Elements images = HTML.select("img");
+            System.out.println(images.size());
+            System.out.println(URLtoParse);
+//            String src, altext = " ";
+//            if(images != null)
+//            {
+//                for (Element el: images)
+//                {
+//                    System.out.println(el);
+//                    src = el.attr("src");
+//                    altext = el.attr("alt");
+//                    org.bson.Document img = new org.bson.Document("src",src).append("altText",altext);
+//                    System.out.println(img);
+//                    Images.add(img);
+//                }
+//            }
+
 
             String [] BodyArray = smbody.split(" ");
             String [] H1Array = Header1.split(" ");
@@ -172,6 +223,7 @@ public class Indexer implements Runnable
 
             InsertURLAnalysis();
             InsertWordsToCollection();
+//            InsertImagesToCollection();
             //System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
             System.out.printf("Remaining to index %d\n", RemainingToIndex());
         }
@@ -189,6 +241,10 @@ public class Indexer implements Runnable
         H5D.clear();
         H6D.clear();
         PD.clear();
+        if(Images != null)
+        {
+            Images.clear();
+        }
     }
 
     public long RemainingToIndex()
@@ -201,6 +257,7 @@ public class Indexer implements Runnable
         HTMLDoc = DBAdapeter.getDoctoIndex();
     }
 
+    public void InsertImagesToCollection() {DBAdapeter.addImages(Images);}
 
     public void RemoveSWAndNEC(ArrayList<String> L, String[] Arr)
     {
@@ -216,6 +273,19 @@ public class Indexer implements Runnable
                 }
             }
         }
+    }
+
+    public String GetCountry(String URL)
+    {
+        String Country = "NA";
+        for(String Extn : URLExtension)
+        {
+            if(URL.contains(Extn))
+            {
+                Country =  Countries.get(URLExtension.indexOf(Extn));
+            }
+        }
+        return Country;
     }
 
     public void Stem(ArrayList<String> Words, ArrayList<org.bson.Document> HTMLAnalysis)
@@ -292,7 +362,7 @@ public class Indexer implements Runnable
     {
         synchronized (URLLock)
         {
-            DBAdapeter.addURL(URLtoParse, Title, Summary, BD, H1D, H2D, H3D, H4D, H5D, H6D, PD);
+            DBAdapeter.addURL(URLtoParse, Title, Summary, BD, H1D, H2D, H3D, H4D, H5D, H6D, PD, Geo);
         }
     }
 

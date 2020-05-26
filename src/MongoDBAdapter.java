@@ -1,9 +1,6 @@
 import java.io.*;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,6 +24,8 @@ public class MongoDBAdapter {
 	private MongoCollection<Document> UnvisitedCollection;
 	private MongoCollection<Document> VisitedCollection;
 	private MongoCollection<Document> RobotCollection;
+	private MongoCollection<Document> ImagesCollection;
+	private MongoCollection<Document> QueriesCollection;
 	private MongoClientURI uri;
 	private MongoClient mongoClient;
 	private MongoDatabase database;
@@ -59,6 +58,10 @@ public class MongoDBAdapter {
 				  OLDWords.drop();
 				  MongoCollection<Document> OLDURLs = database.getCollection("URLs");
 				  OLDURLs.drop();
+				  MongoCollection<Document> OLDImages = database.getCollection("Images");
+				  OLDImages.drop();
+				  MongoCollection<Document> OLDQueries = database.getCollection("Queries");
+				  OLDQueries.drop();
 			      
 			      // Creating a new Collections
 			      database.createCollection("Unvisited");
@@ -66,6 +69,8 @@ public class MongoDBAdapter {
 			      database.createCollection("Robot");
 				  database.createCollection("Words");
 				  database.createCollection("URLs");
+				  database.createCollection("Images");
+				  database.createCollection("Queries");
 		      }
 		      
 		      UnvisitedCollection = database.getCollection("Unvisited");
@@ -73,7 +78,8 @@ public class MongoDBAdapter {
 		      RobotCollection = database.getCollection("Robot");
 		      WordsCollection = database.getCollection("Words");
 		      URLsCollection = database.getCollection("URLs");
-		      //URLsCollection.createIndex(Indexes.text("URL"));
+		      ImagesCollection = database.getCollection("Images");
+		      QueriesCollection = database.getCollection("Queries");
 		      
 		      if (DropTables) {
 			      //Reading Initial Seed Set from File
@@ -320,12 +326,12 @@ public class MongoDBAdapter {
 	}
 
 	public void addURL(String URL, String Title, String Summary, ArrayList<Document> Body, ArrayList<Document> H1,  ArrayList<Document> H2, ArrayList<Document> H3,
-					   ArrayList<Document> H4, ArrayList<Document> H5, ArrayList<Document> H6, ArrayList<Document> P)
+					   ArrayList<Document> H4, ArrayList<Document> H5, ArrayList<Document> H6, ArrayList<Document> P, String Geo)
 	{
 		Document found = URLsCollection.find(Filters.eq("URL",URL)).first();
 		if(found == null)
 		{
-			Document newURL = new Document("URL", URL).append("Title", Title).append("Summary", Summary).append("Body", Body).append("H1",H1).append("H2",H2).append("H3",H3).append("H4",H4).append("H5",H5).append("H6",H6).append("P",P);
+			Document newURL = new Document("URL", URL).append("Title", Title).append("Summary", Summary).append("Country", Geo).append("Body", Body).append("H1",H1).append("H2",H2).append("H3",H3).append("H4",H4).append("H5",H5).append("H6",H6).append("P",P);
 			URLsCollection.insertOne(newURL);
 //			System.out.println("Inserted new URL into table");
 		}
@@ -333,6 +339,11 @@ public class MongoDBAdapter {
 		{
 //			System.out.println("URL already exsists");
 		}
+	}
+
+	public void addImages(ArrayList<Document> Images)
+	{
+		ImagesCollection.insertMany(Images);
 	}
 
 	public void calculateIDF()
@@ -390,6 +401,7 @@ public class MongoDBAdapter {
 		Document found = URLsCollection.find(Filters.eq("URL", URL)).first();
 		String Title = (String) found.get("Title");
 		String Summary = (String) found.get("Summary");
+		String Geo = (String) found.get("Country");
 		ArrayList<Document> Body = (ArrayList<Document>) found.get("Body");
 		double BTF = RetTF(Body,Word);
 		ArrayList<Document> H1 = (ArrayList<Document>) found.get("H1");
@@ -406,7 +418,7 @@ public class MongoDBAdapter {
 		double H6TF = RetTF(H6,Word);
 		ArrayList<Document> P = (ArrayList<Document>) found.get("P");
 		double PTF = RetTF(P,Word);
-		return new QueryResult(Word,BTF,H1TF,H2TF,H3TF,H4TF,H5TF,H6TF,PTF,IDF,URL,Title,Summary);
+		return new QueryResult(Word,BTF,H1TF,H2TF,H3TF,H4TF,H5TF,H6TF,PTF,IDF,URL,Title,Summary,Geo);
 	}
 
 	public ArrayList<PhraseResult> PhraseSearchRes(String SearchPhrase, ArrayList<String> URLs)
@@ -416,10 +428,15 @@ public class MongoDBAdapter {
 		{
 			Document found = URLsCollection.find(Filters.eq("URL", url)).first();
 			String Summary = (String) found.get("Summary");
+			String SummaryLC = Summary.toLowerCase();
 			String Title = (String) found.get("Title");
-			if(Summary.contains(SearchPhrase))
+			String Geo = (String) found.get("Country");
+			List <String> SummaryList = Arrays.asList(SummaryLC.split(" "));
+			int TF = 0;
+			if(SummaryLC.contains(SearchPhrase.toLowerCase()))
 			{
-				Res.add(new PhraseResult(SearchPhrase, url, Summary, Title));
+				TF = Collections.frequency(SummaryList, SearchPhrase.toLowerCase());
+				Res.add(new PhraseResult(SearchPhrase, url, Summary, Title, TF, Geo));
 			}
 		}
 		return Res;
