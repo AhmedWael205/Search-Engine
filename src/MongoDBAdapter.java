@@ -220,7 +220,7 @@ public class MongoDBAdapter {
 	
 	
 	@SuppressWarnings("deprecation")
-	public boolean addVisited(String URI , String AllContent,String Title,String Text) {
+	public boolean addVisited(String URI , String AllContent,String Title,String Text,String urlLastModified) {
 		
 		if(VisitedCollection.find(Filters.eq("url",URI)).first() != null) return false;
 		
@@ -240,7 +240,7 @@ public class MongoDBAdapter {
 				}
 			}				
 		}
-		Document docTemp = new Document("url", URI).append("Title", Title).append("Indexed", 0).append("Document", AllContent);
+		Document docTemp = new Document("url", URI).append("Title", Title).append("Date", urlLastModified).append("Indexed", 0).append("Document", AllContent);
 		System.out.println("Adding "+URI+" to Visited");
 		VisitedCollection.insertOne(docTemp);
 		return true;

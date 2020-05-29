@@ -16,8 +16,10 @@ import org.jsoup.nodes.Entities;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.*;
 //import org.jsoup.nodes.Document;
 import java.io.IOException;
 
@@ -131,24 +133,35 @@ public class Crawler implements Runnable{
 				                if(URISet.size() - count == 1)  {
 			                		count++;
 			                	}
-		                    a.removeAttr("href");
+//		                    a.removeAttr("href");
 		                }
 	            	} else {
 	            		for (Element a : document.getElementsByTag("a")) { 
 		                    a.removeAttr("onclick");
-		                    a.removeAttr("href");
+//		                    a.removeAttr("href");
 	            		}
 	            	}
 	            	
 	            	document.outputSettings()
 	                        .syntax(Document.OutputSettings.Syntax.xml)
 	                        .escapeMode(Entities.EscapeMode.xhtml);
+	            	URL url2 = new URL(URL);
+	        		HttpURLConnection connection2 = (HttpURLConnection) url2.openConnection();
+	        		Long dateTime = (Long) url2.openConnection().getLastModified();
+	        		connection2.disconnect();
+	        		String urlLastModified = ZonedDateTime.ofInstant(Instant.ofEpochMilli(dateTime), ZoneId.of("GMT")).toString();
+	        		if(urlLastModified.equals("1970-01-01T00:00Z[GMT]"))
+	        		{
+		        		System.out.println(urlLastModified);
+	        			urlLastModified = "-1";
+	        		}
+
 	            	
 	                String AllContent = document.toString();
 	            	String Title = document.title();
 	            	String Text = document.text().toString();
 	            	
-	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text)) {
+	            	if(DBAdapeter.addVisited(URL,AllContent,Title,Text,urlLastModified)) {
 	            		if(unvisitedCount < maxUnvisited) {
 			                for(String url : URISet) {
 			                	DBAdapeter.addUnvisited(url);
