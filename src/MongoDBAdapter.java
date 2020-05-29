@@ -326,12 +326,12 @@ public class MongoDBAdapter {
 	}
 
 	public void addURL(String URL, String Title, String Summary, ArrayList<Document> Body, ArrayList<Document> H1,  ArrayList<Document> H2, ArrayList<Document> H3,
-					   ArrayList<Document> H4, ArrayList<Document> H5, ArrayList<Document> H6, ArrayList<Document> P, String Geo)
+					   ArrayList<Document> H4, ArrayList<Document> H5, ArrayList<Document> H6, ArrayList<Document> P, String Geo, String pubDate, ArrayList<Document> Links)
 	{
 		Document found = URLsCollection.find(Filters.eq("URL",URL)).first();
 		if(found == null)
 		{
-			Document newURL = new Document("URL", URL).append("Title", Title).append("Summary", Summary).append("Country", Geo).append("Body", Body).append("H1",H1).append("H2",H2).append("H3",H3).append("H4",H4).append("H5",H5).append("H6",H6).append("P",P);
+			Document newURL = new Document("URL", URL).append("Title", Title).append("Country", Geo).append("pubDate", pubDate).append("Summary", Summary).append("Body", Body).append("H1",H1).append("H2",H2).append("H3",H3).append("H4",H4).append("H5",H5).append("H6",H6).append("P",P).append("Links",Links).append("Popularity",0);
 			URLsCollection.insertOne(newURL);
 //			System.out.println("Inserted new URL into table");
 		}
@@ -402,6 +402,8 @@ public class MongoDBAdapter {
 		String Title = (String) found.get("Title");
 		String Summary = (String) found.get("Summary");
 		String Geo = (String) found.get("Country");
+		String pubDate = (String) found.get("pubDate");
+		Double Pop = (Double) found.get("Popularity");
 		ArrayList<Document> Body = (ArrayList<Document>) found.get("Body");
 		double BTF = RetTF(Body,Word);
 		ArrayList<Document> H1 = (ArrayList<Document>) found.get("H1");
@@ -418,7 +420,7 @@ public class MongoDBAdapter {
 		double H6TF = RetTF(H6,Word);
 		ArrayList<Document> P = (ArrayList<Document>) found.get("P");
 		double PTF = RetTF(P,Word);
-		return new QueryResult(Word,BTF,H1TF,H2TF,H3TF,H4TF,H5TF,H6TF,PTF,IDF,URL,Title,Summary,Geo);
+		return new QueryResult(Word,BTF,H1TF,H2TF,H3TF,H4TF,H5TF,H6TF,PTF,IDF,URL,Title,Summary,Geo,Pop, pubDate);
 	}
 
 	public ArrayList<PhraseResult> PhraseSearchRes(String SearchPhrase, ArrayList<String> URLs)
@@ -431,12 +433,14 @@ public class MongoDBAdapter {
 			String SummaryLC = Summary.toLowerCase();
 			String Title = (String) found.get("Title");
 			String Geo = (String) found.get("Country");
+			String pubDate = (String) found.get("pubDate");
+			Double Pop = (Double) found.get("Popularity");
 			List <String> SummaryList = Arrays.asList(SummaryLC.split(" "));
 			int TF = 0;
 			if(SummaryLC.contains(SearchPhrase.toLowerCase()))
 			{
 				TF = Collections.frequency(SummaryList, SearchPhrase.toLowerCase());
-				Res.add(new PhraseResult(SearchPhrase, url, Summary, Title, TF, Geo));
+				Res.add(new PhraseResult(SearchPhrase, url, Summary, Title, TF, Geo, Pop, pubDate));
 			}
 		}
 		return Res;
@@ -459,6 +463,11 @@ public class MongoDBAdapter {
 			}
 			return TF;
 		}
+	}
+
+	public void AddtoQueryCollection(String Query, String UserCountry)
+	{
+		QueriesCollection.insertOne(new Document("Query", Query).append("User Country", UserCountry));
 	}
 
 	public static void main( String args[] ) {  

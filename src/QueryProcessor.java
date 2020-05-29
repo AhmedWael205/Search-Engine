@@ -146,6 +146,11 @@ public class QueryProcessor {
 //        System.out.println(PSRes.size());
     }
 
+    public void AddQuery(String Query, String UserCountry)
+    {
+        DBAdapeter.AddtoQueryCollection(Query,UserCountry);
+    }
+
     public static void main(String args[])
     {
         boolean Global = false;
@@ -155,7 +160,10 @@ public class QueryProcessor {
         QueryProcessor Q = new QueryProcessor(DBAdapeter);
         System.out.println("Please enter a Query to search for");
         Scanner sc= new Scanner(System.in);
-        String str = sc.nextLine();
-        Q.QuerySearch(str);
+        String Query = sc.nextLine();
+        Q.QuerySearch(Query);
+        //For Right now till the GUI send the correct ONE
+        String UserCountry = "Egypt";
+        Q.AddQuery(Query,UserCountry);
     }
 }

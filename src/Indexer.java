@@ -26,6 +26,7 @@ public class Indexer implements Runnable
     public Document HTML;
     public String Summary;
     public String Geo;
+    public String pubDate;
     public ArrayList<org.bson.Document> BD;
     public ArrayList<org.bson.Document> H1D;
     public ArrayList<org.bson.Document> H2D;
@@ -34,6 +35,7 @@ public class Indexer implements Runnable
     public ArrayList<org.bson.Document> H5D;
     public ArrayList<org.bson.Document> H6D;
     public ArrayList<org.bson.Document> PD;
+    public ArrayList<org.bson.Document> Links;
     public ArrayList<org.bson.Document> Images;
 
 
@@ -64,6 +66,7 @@ public class Indexer implements Runnable
         Title = "";
         Summary = "";
         Geo = "";
+        pubDate = "";
         BD = new ArrayList<>();
         H1D = new ArrayList<>();
         H2D = new ArrayList<>();
@@ -72,6 +75,8 @@ public class Indexer implements Runnable
         H5D = new ArrayList<>();
         H6D = new ArrayList<>();
         PD = new ArrayList<>();
+        Links = new ArrayList<>();
+        Images = new ArrayList<>();
 
         ReadStopWords();
         ReadGeoWords();
@@ -126,6 +131,7 @@ public class Indexer implements Runnable
 
             HTMLString = HTMLDoc.get("Document").toString();
             URLtoParse = HTMLDoc.get("url").toString();
+            pubDate = HTMLDoc.get("Date").toString();
             HTML = Jsoup.parse(HTMLString);
 
             Title = HTML.title();
@@ -142,22 +148,39 @@ public class Indexer implements Runnable
             String Header5 = HTML.getElementsByTag("h5").text().toLowerCase();
             String Header6 = HTML.getElementsByTag("h6").text().toLowerCase();
             String Paragragh = HTML.getElementsByTag("p").text().toLowerCase();
+
+            //For Image Search
             Elements images = HTML.select("img");
-            System.out.println(images.size());
-            System.out.println(URLtoParse);
-//            String src, altext = " ";
-//            if(images != null)
-//            {
-//                for (Element el: images)
-//                {
-//                    System.out.println(el);
-//                    src = el.attr("src");
-//                    altext = el.attr("alt");
-//                    org.bson.Document img = new org.bson.Document("src",src).append("altText",altext);
-//                    System.out.println(img);
-//                    Images.add(img);
-//                }
-//            }
+            String src, altext = " ";
+            if(images != null)
+            {
+                for (Element el: images)
+                {
+                    src = el.attr("src");
+                    altext = el.attr("alt");
+                    org.bson.Document img = new org.bson.Document("src",src).append("altText",altext);
+                    if (((el.attr("alt") != null) && (el.attr("src") != null))) {
+                        Images.add(img);
+                    }
+                }
+            }
+
+            //LinksInPage for Ranker
+            Elements links = HTML.select("a");
+//            System.out.println(links.size());
+            if (links.size() != 0)
+            {
+                for (Element link : links) {
+//                    System.out.println(link);
+                    String URI = link.attr("abs:href");
+                    if (URI != "") {
+                        System.out.println(URI);
+                        Links.add(new org.bson.Document("Link", URI));
+                    }
+                }
+//                System.out.println(Links.get(0));
+            }
+
 
 
             String [] BodyArray = smbody.split(" ");
@@ -223,7 +246,7 @@ public class Indexer implements Runnable
 
             InsertURLAnalysis();
             InsertWordsToCollection();
-//            InsertImagesToCollection();
+            InsertImagesToCollection();
             //System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
             System.out.printf("Remaining to index %d\n", RemainingToIndex());
         }
@@ -257,7 +280,12 @@ public class Indexer implements Runnable
         HTMLDoc = DBAdapeter.getDoctoIndex();
     }
 
-    public void InsertImagesToCollection() {DBAdapeter.addImages(Images);}
+    public void InsertImagesToCollection() {
+        if(Images.size() != 0)
+        {
+            DBAdapeter.addImages(Images);
+        }
+    }
 
     public void RemoveSWAndNEC(ArrayList<String> L, String[] Arr)
     {
@@ -362,7 +390,7 @@ public class Indexer implements Runnable
     {
         synchronized (URLLock)
         {
-            DBAdapeter.addURL(URLtoParse, Title, Summary, BD, H1D, H2D, H3D, H4D, H5D, H6D, PD, Geo);
+            DBAdapeter.addURL(URLtoParse, Title, Summary, BD, H1D, H2D, H3D, H4D, H5D, H6D, PD, Geo, pubDate, Links);
         }
     }
 

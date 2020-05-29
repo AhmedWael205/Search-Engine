@@ -13,7 +13,9 @@ public class QueryResult {
     public String Summary;
     public String Title;
     public String Geo;
-    public QueryResult(String W, double B, double H1, double H2, double H3, double H4, double H5, double H6, double P, double IDF, String url, String title, String Summ, String Geo)
+    public Double Pop;
+    public String pubDate;
+    public QueryResult(String W, double B, double H1, double H2, double H3, double H4, double H5, double H6, double P, double IDF, String url, String title, String Summ, String Geo, Double Pop, String pubDate)
     {
         this.Word = W;
         this.BodyTF = B;
@@ -29,5 +31,7 @@ public class QueryResult {
         this.Title = title;
         this.Summary = Summ;
         this.Geo = Geo;
+        this.Pop = Pop;
+        this.pubDate = pubDate;
     }
 }

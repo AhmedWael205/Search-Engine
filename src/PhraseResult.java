@@ -5,7 +5,9 @@ public class PhraseResult {
     public String Title;
     public int TF;
     public String Geo;
-    public PhraseResult(String word, String Url, String Summ, String Title, int tf, String geo)
+    public Double Pop;
+    public String pubDate;
+    public PhraseResult(String word, String Url, String Summ, String Title, int tf, String geo, Double Pop, String pubDate)
     {
         this.Word = word;
         this.URL = Url;
@@ -13,5 +15,7 @@ public class PhraseResult {
         this.Title = Title;
         this.TF = tf;
         this.Geo = geo;
+        this.Pop = Pop;
+        this.pubDate = pubDate;
     }
 }
