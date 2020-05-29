@@ -147,13 +147,17 @@ public class Crawler implements Runnable{
 	                        .escapeMode(Entities.EscapeMode.xhtml);
 	            	URL url2 = new URL(URL);
 	        		HttpURLConnection connection2 = (HttpURLConnection) url2.openConnection();
-	        		Long dateTime = (Long) url2.openConnection().getLastModified();
+	        		Long dateTime = connection2.getLastModified();
 	        		connection2.disconnect();
 	        		String urlLastModified = ZonedDateTime.ofInstant(Instant.ofEpochMilli(dateTime), ZoneId.of("GMT")).toString();
 	        		if(urlLastModified.equals("1970-01-01T00:00Z[GMT]"))
 	        		{
 		        		System.out.println(urlLastModified);
 	        			urlLastModified = "-1";
+	        		}
+	        		else
+	        		{
+	        			System.out.println(urlLastModified);
 	        		}
 
 	            	
