@@ -5,6 +5,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.mongodb.*;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Indexes;
 import org.bson.Document;
 import org.jsoup.Jsoup;
@@ -468,6 +469,20 @@ public class MongoDBAdapter {
 	public void AddtoQueryCollection(String Query, String UserCountry)
 	{
 		QueriesCollection.insertOne(new Document("Query", Query).append("User Country", UserCountry));
+	}
+
+	public ArrayList<ImageResult> getImage(String Word)
+	{
+		ArrayList<ImageResult> Res = new ArrayList<>();
+		FindIterable<Document> iterable = ImagesCollection.find();
+		MongoCursor<Document> cursor = iterable.iterator();
+		while(cursor.hasNext()) {
+			if(cursor.next().get("altText").toString().contains(Word))
+			{
+				Res.add(new ImageResult(cursor.next().get("src").toString(), cursor.next().get("altText").toString()));
+			}
+		}
+		return Res;
 	}
 
 	public static void main( String args[] ) {  

@@ -151,15 +151,44 @@ public class Indexer implements Runnable
 
             //For Image Search
             Elements images = HTML.select("img");
-            String src, altext = " ";
+            String src, altext, text = "";
+            String [] strArray = null;
+            ArrayList<String> altImage = new ArrayList<>();
+            ArrayList<String> altextStemmed = new ArrayList<>();
             if(images != null)
             {
+                PorterStemmer PStem = new PorterStemmer();
                 for (Element el: images)
                 {
+                    altImage.clear();
+                    altextStemmed.clear();
+                    text = "";
                     src = el.attr("src");
-                    altext = el.attr("alt");
-                    org.bson.Document img = new org.bson.Document("src",src).append("altText",altext);
-                    if (((el.attr("alt") != null) && (el.attr("src") != null))) {
+                    altext = el.attr("alt").toLowerCase();
+//                    System.out.printf("AltText: %s\n", altext);
+                    if(altext.equals(""))
+                    {
+                        text = "untitled";
+                    }
+                    else
+                    {
+                        //Stemm altext
+                        strArray = altext.split(" ");
+                        RemoveSWAndNEC(altImage,strArray);
+                        for(String w : altImage) {
+                            PStem.setCurrent(w);
+                            PStem.stem();
+                            altextStemmed.add(PStem.getCurrent());
+                        }
+                        for( String w : altextStemmed)
+                        {
+                            text = text + " " + w;
+                        }
+                    }
+
+//                    System.out.printf("AltText After Stemming: %s\n", text);
+                    org.bson.Document img = new org.bson.Document("src",src).append("altText",text);
+                    if (el.attr("src") != null) {
                         Images.add(img);
                     }
                 }
@@ -167,15 +196,23 @@ public class Indexer implements Runnable
 
             //LinksInPage for Ranker
             Elements links = HTML.select("a");
+            int linkCount = 0;
 //            System.out.println(links.size());
             if (links.size() != 0)
             {
+
                 for (Element link : links) {
+                    if(linkCount <= 50) {
 //                    System.out.println(link);
-                    String URI = link.attr("abs:href");
-                    if (URI != "") {
-                        System.out.println(URI);
-                        Links.add(new org.bson.Document("Link", URI));
+                        String URI = link.attr("abs:href");
+                        if (URI != "") {
+//                            System.out.println(URI);
+                            Links.add(new org.bson.Document("Link", URI));
+                        }
+                        linkCount++;
+                    }
+                    else {
+                        break;
                     }
                 }
 //                System.out.println(Links.get(0));
@@ -408,7 +445,7 @@ public class Indexer implements Runnable
         boolean DropTable = false;
         MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);
         DBAdapeter.init(DropTable);
-        int ThreadNumbers = 10;
+        int ThreadNumbers = 50;
         Thread myThreads[] = new Thread[ThreadNumbers];
 
         Object WordLock = new Object();

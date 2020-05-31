@@ -11,16 +11,28 @@ public class QueryProcessor {
     //Access Words Collection
     private MongoDBAdapter DBAdapeter;
 
+    boolean ImageSearch;
+
     public ArrayList<String> StopWords;
     public ArrayList<String> SearchWords;
     public String SearchPhrase;
     public ArrayList<QueryResult> QPRes;
     public ArrayList<PhraseResult> PSRes;
 
-    public QueryProcessor(MongoDBAdapter DBA) {
-        DBAdapeter = DBA;
+    //For GUI
+    public ArrayList<ImageResult> ImageResults;
+    public ArrayList<URLResult> URLResults;
+
+    public QueryProcessor() {
+        boolean Global = false;
+        boolean DropTable = false;
+        DBAdapeter = new MongoDBAdapter(Global);
+        DBAdapeter.init(DropTable);
         SearchWords = new ArrayList<>();
+        ImageResults = new ArrayList<>();
+        URLResults = new ArrayList<>();
         SearchPhrase = "";
+        ImageSearch = false;
         QPRes = new ArrayList<>();
         PSRes = new ArrayList<>();
         ReadStopWords();
@@ -119,31 +131,39 @@ public class QueryProcessor {
         ArrayList<String> WordSearchUrls = new ArrayList<>();
         ArrayList<String> PhraseSearchUrls = new ArrayList<>();
         double IDF;
-        for (String word : StemmedQ) {
-            WordSearchUrls.clear();
-            IDF = RetIDF(word);
-            if(IDF != 10000000)
-            {
-                WordSearchUrls.addAll(URLs(word));
-                if(SearchPhrase.contains(word))
-                {
-                    PhraseSearchUrls.addAll(URLs(word));
-                }
-                for(String url : WordSearchUrls)
-                {
-                    QPRes.add(QPSearch(word, url, IDF));
+        if(!ImageSearch) {
+            for (String word : StemmedQ) {
+                WordSearchUrls.clear();
+                IDF = RetIDF(word);
+                if (IDF != 10000000) {
+                    WordSearchUrls.addAll(URLs(word));
+                    if (SearchPhrase.contains(word)) {
+                        PhraseSearchUrls.addAll(URLs(word));
+                    }
+                    for (String url : WordSearchUrls) {
+                        QPRes.add(QPSearch(word, url, IDF));
+                    }
+                } else {
+                    System.out.println("Word doesn't exist in any Document Indexed!");
+                    break;
                 }
             }
-            else
-            {
-                System.out.println("Word doesn't exist in any Document Indexed!");
-                break;
+            //TODO 4: Phrase Search
+            PSRes.addAll(PhraseResult(PhraseSearchUrls));
+//            System.out.println(PSRes.get(0).URL);
+//            System.out.println(PSRes.size());
+        }
+        else
+        {
+            for (String word : StemmedQ) {
+                ImageResults.addAll(SearchImagesInDB(word));
             }
         }
-        //TODO 4: Phrase Search
-        PSRes.addAll(PhraseResult(PhraseSearchUrls));
-//        System.out.println(PSRes.get(0).URL);
-//        System.out.println(PSRes.size());
+    }
+
+    public ArrayList<ImageResult> SearchImagesInDB(String Word)
+    {
+        return DBAdapeter.getImage(Word);
     }
 
     public void AddQuery(String Query, String UserCountry)
@@ -153,15 +173,15 @@ public class QueryProcessor {
 
     public static void main(String args[])
     {
-        boolean Global = false;
-        boolean DropTable = false;
-        MongoDBAdapter DBAdapeter = new MongoDBAdapter(Global);
-        DBAdapeter.init(DropTable);
-        QueryProcessor Q = new QueryProcessor(DBAdapeter);
-        System.out.println("Please enter a Query to search for");
-        Scanner sc= new Scanner(System.in);
-        String Query = sc.nextLine();
+        QueryProcessor Q = new QueryProcessor();
+        //Get Boolean from GUI
+        Q.ImageSearch = true;
+//        System.out.println("Please enter a Query to search for");
+//        Scanner sc= new Scanner(System.in);
+//        String Query = sc.nextLine();
+        String Query = "";
         Q.QuerySearch(Query);
+        //Call Ranker to return URLResults
         //For Right now till the GUI send the correct ONE
         String UserCountry = "Egypt";
         Q.AddQuery(Query,UserCountry);
