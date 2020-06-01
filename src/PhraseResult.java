@@ -18,4 +18,10 @@ public class PhraseResult {
         this.Pop = Pop;
         this.pubDate = pubDate;
     }
+    public boolean isEmpty()
+    {
+        if (URL.isEmpty())
+            return true;
+        else return false;
+    }
 }

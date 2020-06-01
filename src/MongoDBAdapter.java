@@ -484,6 +484,19 @@ public class MongoDBAdapter {
 		}
 		return Res;
 	}
+	public MongoCollection<Document> returnIndexed()
+	{
+		return URLsCollection;
+	}
+
+	public void updatePopularity (String url,double popularityScore)
+	{
+		Document Query = new Document("URL", url);
+		Document newDoc = new Document("Popularity",popularityScore);
+		Document UpdatedDoc = new Document("$set", newDoc);
+		URLsCollection.updateOne(Query,UpdatedDoc);
+	}
+
 
 	public static void main( String args[] ) {  
 
