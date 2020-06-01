@@ -16,16 +16,16 @@ import java.util.List;
 public class Ranker implements Runnable {
 
     //private static final double dampingFactor = 0.85;
-    private static MongoDBAdapter DBAdapeter;
+    private static MongoDBAdapter DB;
 
 
 
     public Ranker(MongoDBAdapter mongoDBAdapter )
     {
-        this.DBAdapeter = mongoDBAdapter;
+        this.DB = mongoDBAdapter;
     }
 
-    public static double calculateScore(QueryResult queryResult,PhraseResult phraseResult)
+    public  double calculateScore(QueryResult queryResult,PhraseResult phraseResult)
     {
 
         double relevanceScore=0;
@@ -78,7 +78,7 @@ public class Ranker implements Runnable {
     }
 
 
-    public static void calculatePopularity (MongoCollection<Document>Indexed)
+    public  void calculatePopularity (MongoCollection<Document>Indexed)
     {
         long totalIndexed1= Indexed.countDocuments();
         long totalIndexed2=totalIndexed1;
@@ -112,14 +112,9 @@ public class Ranker implements Runnable {
 
             }
 
-            // System.out.print(mylink+"   Popularity = "+ popularityScore + " \n");
-            // DBAdapeter.updatePopularity(mylink,popularityScore);
-            //not sure why this returns an exception
+             System.out.print(mylink+"   Popularity = "+ popularityScore + " \n");
+            this.DB.updatePopularity(mylink,popularityScore);
 
-            Document Query = new Document("URL", mylink);
-            Document newDoc = new Document("Popularity",popularityScore);
-            Document UpdatedDoc = new Document("$set", newDoc);
-            Indexed.updateOne(Query,UpdatedDoc);
             //hala1.clear();
             // cursor2.close();
 
@@ -137,7 +132,8 @@ public class Ranker implements Runnable {
         DBAdapeter.init(DropTable);
         MongoCollection<Document> Indexed = DBAdapeter.returnIndexed();
 
-        calculatePopularity(Indexed);
+        Ranker ranker = new Ranker (DBAdapeter);
+        ranker.calculatePopularity(Indexed);
 
     }
 }
