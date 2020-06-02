@@ -170,10 +170,12 @@ public class QueryProcessor {
         return DBAdapeter.getImage(Word);
     }
 
-    public void AddQuery(String Query, String UserCountry)
+    public void AddQuery(String Name, String UserCountry)
     {
-        DBAdapeter.AddtoQueryCollection(Query,UserCountry);
+        DBAdapeter.AddtoQueryCollection(Name, UserCountry);
     }
+
+    public ArrayList<TrendsResult> retunTrends(String Country) { return  DBAdapeter.Trends(Country); }
 
     public static void main(String args[])
     {
@@ -185,6 +187,6 @@ public class QueryProcessor {
         Q.QuerySearch(Query);
         //Call Ranker to return URLResults
         //For Right now till the GUI send the correct ONE
-        Q.AddQuery(Query,Q.UserCountry);
+        Q.AddQuery(Q.Name,Q.UserCountry);
     }
 }
