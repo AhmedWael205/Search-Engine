@@ -13,6 +13,7 @@ public class QueryProcessor {
 
     public boolean ImageSearch;
     public String UserCountry;
+    public String Name;
 
     public ArrayList<String> StopWords;
     public ArrayList<String> SearchWords;
@@ -24,7 +25,7 @@ public class QueryProcessor {
     public ArrayList<ImageResult> ImageResults;
     public ArrayList<URLResult> URLResults;
 
-    public QueryProcessor(boolean IS, String UC) {
+    public QueryProcessor(boolean IS, String UC, String N) {
         boolean Global = false;
         boolean DropTable = false;
         DBAdapeter = new MongoDBAdapter(Global);
@@ -35,6 +36,7 @@ public class QueryProcessor {
         SearchPhrase = "";
         ImageSearch = IS;
         UserCountry = UC;
+        Name = N;
         QPRes = new ArrayList<>();
         PSRes = new ArrayList<>();
         ReadStopWords();
@@ -175,7 +177,7 @@ public class QueryProcessor {
 
     public static void main(String args[])
     {
-        QueryProcessor Q = new QueryProcessor(true, "Egypt");
+        QueryProcessor Q = new QueryProcessor(true, "Egypt", "Wael");
 //        System.out.println("Please enter a Query to search for");
 //        Scanner sc= new Scanner(System.in);
 //        String Query = sc.nextLine();
