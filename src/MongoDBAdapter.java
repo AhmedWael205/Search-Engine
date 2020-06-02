@@ -138,6 +138,9 @@ public class MongoDBAdapter {
 	       }
 	};
 	
+	
+	
+	
 	public int addManyUnvisited(Set<String> URIs) {
 		List<Document> documents = new ArrayList<Document>();
 		Document docTemp;
@@ -246,6 +249,105 @@ public class MongoDBAdapter {
 		VisitedCollection.insertOne(docTemp);
 		return true;
 	}
+	
+	public void deleteRepeatedUrls() {
+		FindIterable<Document> iterable = VisitedCollection.find();
+		iterable.noCursorTimeout(true);
+		int count = 0;
+		for(Document Doc : iterable)
+		{
+			String URL = (String) Doc.get("url");
+			long found = VisitedCollection.countDocuments(Filters.eq("url", URL));
+			Document result = null;
+			
+			
+			if (URL.substring(URL.length() - 1).equals("/"))
+				result = VisitedCollection.find(Filters.eq("URL",URL.substring(0, URL.length() - 1))).first();
+			else
+				result = VisitedCollection.find(Filters.eq("URL",URL+"/")).first();
+			
+			if(found > 1)
+			{
+				System.out.println("Repeated url "+ URL);
+				VisitedCollection.deleteOne(Filters.eq("url",URL));
+				count = count + 1;
+			}
+			
+			if(result != null)
+			{
+				System.out.println("Repeated url with/without /: "+ URL);
+				VisitedCollection.deleteOne(Filters.eq("url",URL));
+				count = count + 1;
+			}
+		}
+		System.out.println("Repeated Count = "+ Integer.toString(count));
+	}
+	
+	public void removeBackSlash() {		
+		FindIterable<Document> iterable = VisitedCollection.find();
+		iterable.noCursorTimeout(true);
+		for(Document Doc : iterable)
+		{
+			String URL = (String) Doc.get("url");
+			if (URL.substring(URL.length() - 1).equals("/"))
+			{
+				Document Query = new Document("url", URL);
+				Document newDoc = new Document("url",URL.substring(0, URL.length() - 1));
+				Document UpdatedDoc = new Document("$set", newDoc);
+				VisitedCollection.updateOne(Query,UpdatedDoc);
+			}
+		}
+	}
+	
+//	public void removeFromWords(String Url) {
+//		FindIterable<Document> iterable = WordsCollection.find(new BasicDBObject("URLs.Url",Url));
+//		iterable.noCursorTimeout(true);
+//		int count = 0;
+//		for(Document Doc : iterable) {
+//			count = count + 1;
+//		}
+//		System.out.println("Was included in "+Integer.toString(count)+" Words");
+//	}
+	
+	public void indexerPostProcessing() {
+		FindIterable<Document> iterable = URLsCollection.find();
+		iterable.noCursorTimeout(true);
+		int count = 0;
+		for(Document Doc : iterable)
+		{
+			try {
+				Set<String> FoundLinks = new HashSet<String>();
+				ArrayList<Document> LinksDocument =  (ArrayList<Document>) Doc.get("Links");
+				Set<Document> SetLinksDocument = new HashSet<Document>(LinksDocument);
+				String currURL = (String )Doc.get("URL");
+	//			System.out.println(currURL);
+				for(Document Link : SetLinksDocument)
+				{
+					String LinkString = (String) Link.get("Link");
+					Document result1 = URLsCollection.find(Filters.eq("URL",LinkString)).first();
+					Document result2 = null;
+					
+					if (LinkString.substring(LinkString.length() - 1).equals("/"))
+						result2 = URLsCollection.find(Filters.eq("URL",LinkString.substring(0, LinkString.length() - 1))).first();
+					else
+						result2 = URLsCollection.find(Filters.eq("URL",LinkString+"/")).first();
+					
+					if (result1 != null || result2 != null)
+						FoundLinks.add(LinkString);
+	//				else
+	//					System.out.println("Not in our DB: "+LinkString);
+				}
+	//			System.out.println(FoundLinks.toString());
+				URLsCollection.updateOne(new BasicDBObject("URL", currURL), new BasicDBObject("$unset", new BasicDBObject("Links", "")));
+				URLsCollection.updateOne(new BasicDBObject("URL", currURL), new BasicDBObject("$set", new BasicDBObject("Links", FoundLinks)));
+				count = count + 1;
+				System.out.println("Number of processed documents: "+Integer.toString(count));
+			} catch (Exception e) {
+				count = count + 1;
+				System.out.println("(Already processed) Number of processed documents: "+Integer.toString(count));
+			}
+		}
+	}
 
 	public Document getDoctoIndex() {
 		Document Res = VisitedCollection.find(Filters.eq("Indexed", 0)).first();
@@ -350,7 +452,8 @@ public class MongoDBAdapter {
 	public void calculateIDF()
 	{
 		System.out.println("Started Calculating IDFs");
-		FindIterable<Document> iterable = WordsCollection.find();
+		FindIterable<Document> iterable = WordsCollection.find(Filters.eq("IDF",0));
+		iterable.noCursorTimeout(true);
 		MAX_NO_DOC = visitedCount();
 		for(Document Doc : iterable)
 		{
@@ -474,14 +577,11 @@ public class MongoDBAdapter {
 	public ArrayList<ImageResult> getImage(String Word)
 	{
 		ArrayList<ImageResult> Res = new ArrayList<>();
-		FindIterable<Document> iterable = ImagesCollection.find();
-		MongoCursor<Document> cursor = iterable.iterator();
-		while(cursor.hasNext()) {
-			if(cursor.next().get("altText").toString().contains(Word))
-			{
-				Res.add(new ImageResult(cursor.next().get("src").toString(), cursor.next().get("altText").toString()));
-			}
-		}
+		FindIterable<Document> iterable = ImagesCollection.find(Filters.and(Filters.regex("altText", ".*"+Word+".*"),(Filters.regex("src", "http.*"))));
+		iterable.noCursorTimeout(true);
+		for(Document Doc : iterable)
+			Res.add(new ImageResult(Doc.get("src").toString(), Doc.get("altText").toString()));
+
 		return Res;
 	}
 	public MongoCollection<Document> returnIndexed()
@@ -502,7 +602,8 @@ public class MongoDBAdapter {
 
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
 		DBAdapeter.init(false);
-		DBAdapeter.inRobots("https://www.ft.co/search");
+//		DBAdapeter.deleteRepeatedUrls();
+		DBAdapeter.indexerPostProcessing();
 	}
 
 }

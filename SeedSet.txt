@@ -16,7 +16,6 @@ https://www.Bodybuilding.Com
 https://www.Nbcsports.Com
 https://www.Deadspin.Com
 https://www.Cricbuzz.Com
-https://www.Goal.Com
 https://www.Sports.Yahoo.Com
 https://www.nih.gov
 https://www.kidshealth.org
@@ -30,7 +29,7 @@ https://www.mayoclinic.com
 https://www.menshealth.com
 https://www.economist.com/
 https://www.bbc.com/
-http://www.economicsuk.com/
+https://www.economicsuk.com/
 https://www.federalreserve.gov/
 https://www.ecb.europa.eu/
 https://www.bankofengland.co.uk/

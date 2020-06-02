@@ -284,7 +284,7 @@ public class Indexer implements Runnable
             InsertURLAnalysis();
             InsertWordsToCollection();
             InsertImagesToCollection();
-            //System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
+            System.out.printf("Finished Indexing Page with URL: %s\n", URLtoParse);
             System.out.printf("Remaining to index %d\n", RemainingToIndex());
         }
         //InsertWordsToCollection();
@@ -453,6 +453,7 @@ public class Indexer implements Runnable
 
         LocalTime myObj = LocalTime.now();
         System.out.println(myObj);
+        System.out.println("Running Indexer");
 
         for (int j = 0; j < ThreadNumbers; j++) {
             myThreads[j] = new Thread(new Indexer(DBAdapeter, WordLock, URLLock));
@@ -471,10 +472,17 @@ public class Indexer implements Runnable
         System.out.println(myObj1);
 
         Indexer index = new Indexer(DBAdapeter, WordLock, URLLock);
+        System.out.println("Done ... Calculating TF-IDF");
         index.FinalizeIDF();
 
         LocalTime myObj2 = LocalTime.now();
         System.out.println(myObj2);
+        
+        System.out.println("Done ... Running Indexer PostProcessing");
+        DBAdapeter.indexerPostProcessing();
+        System.out.println("Done ... Calculating Popularity");
+        //Add Calculate Popularity
+        System.out.println("Done");
     }
 }
 

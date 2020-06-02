@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 
 
 public class Crawler implements Runnable{
-	private int maxVisited = 7500;
+	private int maxVisited = 5000;
 	private int maxLinkfromSite = 50;
 	private int maxUnvisited = 20000;
 	private MongoDBAdapter DBAdapeter;
@@ -152,7 +152,6 @@ public class Crawler implements Runnable{
 	        		String urlLastModified = ZonedDateTime.ofInstant(Instant.ofEpochMilli(dateTime), ZoneId.of("GMT")).toString();
 	        		if(urlLastModified.equals("1970-01-01T00:00Z[GMT]"))
 	        		{
-		        		System.out.println(urlLastModified);
 	        			urlLastModified = "-1";
 	        		}
 	        		else
@@ -180,7 +179,7 @@ public class Crawler implements Runnable{
 	
 	public static void main( String args[] ) {
 		boolean Global = false;
-		boolean DropTable = true;
+		boolean DropTable = false;
 		int ThreadNumbers = 50;
 		Object UnvisitedLock = new Object();
 		
@@ -200,6 +199,9 @@ public class Crawler implements Runnable{
 				e.printStackTrace();
 			} 
 		}
+		System.out.println("Crawler has finished ... Making sure no repeated URLs\nPlease wait ...");
+		DBAdapeter.deleteRepeatedUrls();
+		System.out.println("Done");
 	}		
 
 }
