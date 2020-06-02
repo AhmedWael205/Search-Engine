@@ -11,7 +11,8 @@ public class QueryProcessor {
     //Access Words Collection
     private MongoDBAdapter DBAdapeter;
 
-    boolean ImageSearch;
+    public boolean ImageSearch;
+    public String UserCountry;
 
     public ArrayList<String> StopWords;
     public ArrayList<String> SearchWords;
@@ -23,7 +24,7 @@ public class QueryProcessor {
     public ArrayList<ImageResult> ImageResults;
     public ArrayList<URLResult> URLResults;
 
-    public QueryProcessor() {
+    public QueryProcessor(boolean IS, String UC) {
         boolean Global = false;
         boolean DropTable = false;
         DBAdapeter = new MongoDBAdapter(Global);
@@ -32,7 +33,8 @@ public class QueryProcessor {
         ImageResults = new ArrayList<>();
         URLResults = new ArrayList<>();
         SearchPhrase = "";
-        ImageSearch = false;
+        ImageSearch = IS;
+        UserCountry = UC;
         QPRes = new ArrayList<>();
         PSRes = new ArrayList<>();
         ReadStopWords();
@@ -173,9 +175,7 @@ public class QueryProcessor {
 
     public static void main(String args[])
     {
-        QueryProcessor Q = new QueryProcessor();
-        //Get Boolean from GUI
-        Q.ImageSearch = true;
+        QueryProcessor Q = new QueryProcessor(true, "Egypt");
 //        System.out.println("Please enter a Query to search for");
 //        Scanner sc= new Scanner(System.in);
 //        String Query = sc.nextLine();
@@ -183,7 +183,6 @@ public class QueryProcessor {
         Q.QuerySearch(Query);
         //Call Ranker to return URLResults
         //For Right now till the GUI send the correct ONE
-        String UserCountry = "Egypt";
-        Q.AddQuery(Query,UserCountry);
+        Q.AddQuery(Query,Q.UserCountry);
     }
 }
