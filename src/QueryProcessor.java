@@ -118,7 +118,10 @@ public class QueryProcessor {
 
     public ArrayList<PhraseResult> PhraseResult(ArrayList<String> URLs)
     {
-        return DBAdapeter.PhraseSearchRes(SearchPhrase, URLs);
+        if(SearchPhrase != "")
+            return DBAdapeter.PhraseSearchRes(SearchPhrase, URLs);
+        else
+            return null;
     }
 
     public void QuerySearch(String Query) {
@@ -138,7 +141,7 @@ public class QueryProcessor {
         double IDF;
         if(!ImageSearch) {
             for (String word : StemmedQ) {
-                WordSearchUrls.clear();
+//                WordSearchUrls.clear();
                 IDF = RetIDF(word);
                 if (IDF != 10000000) {
                     WordSearchUrls.addAll(URLs(word));
@@ -154,7 +157,8 @@ public class QueryProcessor {
                 }
             }
             //TODO 4: Phrase Search
-            PSRes.addAll(PhraseResult(PhraseSearchUrls));
+            if(PhraseResult(PhraseSearchUrls) != null)
+                PSRes.addAll(PhraseResult(PhraseSearchUrls));
 //            System.out.println(PSRes.get(0).URL);
 //            System.out.println(PSRes.size());
         }
@@ -180,19 +184,21 @@ public class QueryProcessor {
 
     public static void main(String args[])
     {
-        QueryProcessor Q = new QueryProcessor(true, "Egypt", "Wael");
+        QueryProcessor Q = new QueryProcessor(false, "Egypt", "Wael");
 //        System.out.println("Please enter a Query to search for");
 //        Scanner sc= new Scanner(System.in);
 //        String Query = sc.nextLine();
         String Query = "messi";
         Q.QuerySearch(Query);
         Ranker r = new Ranker(Q.DBAdapeter);
-        if(Q.PSRes != null)
+        if(Q.PSRes.size() != 0)
         {
             for(QueryResult q : Q.QPRes)
             {
+                System.out.println("Hi1 QP");
                 for(PhraseResult p : Q.PSRes)
                 {
+//                    System.out.println("Hi2");
                     r.calculateScore(q,p);
                 }
             }
@@ -201,6 +207,7 @@ public class QueryProcessor {
         {
             for(QueryResult q : Q.QPRes)
             {
+//                System.out.println("Hi3");
                 r.calculateScore(q,null);
             }
         }
@@ -208,10 +215,10 @@ public class QueryProcessor {
         //Call Ranker to return URLResults
         Q.URLResults.addAll(r.Pages);
 
-        for(URLResult url : Q.URLResults)
-        {
-            System.out.println(url.url + " " + url.score);
-        }
+//        for(URLResult url : Q.URLResults)
+//        {
+//            System.out.println(url.url + " " + url.score);
+//        }
         //For Right now till the GUI send the correct ONE
 //        Q.AddQuery(Q.Name,Q.UserCountry);
     }
