@@ -569,9 +569,21 @@ public class MongoDBAdapter {
 		}
 	}
 
-	public void AddtoQueryCollection(String Query, String UserCountry)
+	public void AddtoQueryCollection(String Name, String UserCountry)
 	{
-		QueriesCollection.insertOne(new Document("Query", Query).append("User Country", UserCountry));
+		if(!Name.equals("")) {
+			Document found = QueriesCollection.find(Filters.eq("Name", Name)).first();
+			int Freq = 0;
+			if (found == null) {
+				QueriesCollection.insertOne(new Document("Name", Name).append("Freq", 0).append("User Country", UserCountry));
+			} else {
+				Freq = (int) found.get("Freq");
+				Document Query = new Document("Name", Name);
+				Document newDoc = new Document("Freq", Freq + 1);
+				Document UpdatedDoc = new Document("$set", newDoc);
+				QueriesCollection.updateOne(Query, UpdatedDoc);
+			}
+		}
 	}
 
 	public ArrayList<ImageResult> getImage(String Word)
@@ -597,6 +609,20 @@ public class MongoDBAdapter {
 		URLsCollection.updateOne(Query,UpdatedDoc);
 	}
 
+	public ArrayList<TrendsResult> Trends (String Country)
+	{
+		ArrayList<TrendsResult> Res = new ArrayList<>();
+		FindIterable<Document> found = QueriesCollection.find(Filters.eq("User Country", Country));
+		found.noCursorTimeout(true);
+		TrendsResult newT = null;
+		for (Document f : found)
+		{
+			newT= new TrendsResult(f.get("Name").toString(), (int) f.get("Freq"));
+			Res.add(newT);
+		}
+		Collections.sort(Res, new TrendsComparator());
+		return Res;
+	}
 
 	public static void main( String args[] ) {  
 

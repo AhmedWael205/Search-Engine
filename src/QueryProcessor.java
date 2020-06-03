@@ -13,6 +13,7 @@ public class QueryProcessor {
 
     public boolean ImageSearch;
     public String UserCountry;
+    public String Name;
 
     public ArrayList<String> StopWords;
     public ArrayList<String> SearchWords;
@@ -24,7 +25,7 @@ public class QueryProcessor {
     public ArrayList<ImageResult> ImageResults;
     public ArrayList<URLResult> URLResults;
 
-    public QueryProcessor(boolean IS, String UC) {
+    public QueryProcessor(boolean IS, String UC, String N) {
         boolean Global = false;
         boolean DropTable = false;
         DBAdapeter = new MongoDBAdapter(Global);
@@ -35,6 +36,7 @@ public class QueryProcessor {
         SearchPhrase = "";
         ImageSearch = IS;
         UserCountry = UC;
+        Name = N;
         QPRes = new ArrayList<>();
         PSRes = new ArrayList<>();
         ReadStopWords();
@@ -119,7 +121,7 @@ public class QueryProcessor {
     }
 
     public void QuerySearch(String Query) {
-
+        AddQuery(Name,UserCountry);
         //TODO 1: Remove the stop words
         SearchPhrase(Query);
 
@@ -168,14 +170,16 @@ public class QueryProcessor {
         return DBAdapeter.getImage(Word);
     }
 
-    public void AddQuery(String Query, String UserCountry)
+    public void AddQuery(String Name, String UserCountry)
     {
-        DBAdapeter.AddtoQueryCollection(Query,UserCountry);
+        DBAdapeter.AddtoQueryCollection(Name, UserCountry);
     }
+
+    public ArrayList<TrendsResult> retunTrends(String Country) { return  DBAdapeter.Trends(Country); }
 
     public static void main(String args[])
     {
-        QueryProcessor Q = new QueryProcessor(true, "Egypt");
+        QueryProcessor Q = new QueryProcessor(true, "Egypt", "Wael");
 //        System.out.println("Please enter a Query to search for");
 //        Scanner sc= new Scanner(System.in);
 //        String Query = sc.nextLine();
@@ -183,6 +187,6 @@ public class QueryProcessor {
         Q.QuerySearch(Query);
         //Call Ranker to return URLResults
         //For Right now till the GUI send the correct ONE
-        Q.AddQuery(Query,Q.UserCountry);
+//        Q.AddQuery(Q.Name,Q.UserCountry);
     }
 }
