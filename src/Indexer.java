@@ -1,3 +1,4 @@
+import com.mongodb.client.MongoCollection;
 import org.jsoup.Jsoup;
 
 import java.io.BufferedReader;
@@ -482,6 +483,10 @@ public class Indexer implements Runnable
         DBAdapeter.indexerPostProcessing();
         System.out.println("Done ... Calculating Popularity");
         //Add Calculate Popularity
+        MongoCollection<org.bson.Document> Indexed = DBAdapeter.returnIndexed();
+
+        Ranker ranker = new Ranker (DBAdapeter);
+        ranker.calculatePopularity(Indexed);
         System.out.println("Done");
     }
 }

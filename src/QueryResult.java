@@ -40,4 +40,5 @@ public class QueryResult {
             return true;
         else return false;
     }
+
 }

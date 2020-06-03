@@ -3,6 +3,7 @@ import org.tartarus.snowball.ext.PorterStemmer;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -183,9 +184,34 @@ public class QueryProcessor {
 //        System.out.println("Please enter a Query to search for");
 //        Scanner sc= new Scanner(System.in);
 //        String Query = sc.nextLine();
-        String Query = "";
+        String Query = "messi";
         Q.QuerySearch(Query);
+        Ranker r = new Ranker(Q.DBAdapeter);
+        if(Q.PSRes != null)
+        {
+            for(QueryResult q : Q.QPRes)
+            {
+                for(PhraseResult p : Q.PSRes)
+                {
+                    r.calculateScore(q,p);
+                }
+            }
+        }
+        else
+        {
+            for(QueryResult q : Q.QPRes)
+            {
+                r.calculateScore(q,null);
+            }
+        }
+        Collections.sort(r.Pages, new ScoreComparator());
         //Call Ranker to return URLResults
+        Q.URLResults.addAll(r.Pages);
+
+        for(URLResult url : Q.URLResults)
+        {
+            System.out.println(url.url + " " + url.score);
+        }
         //For Right now till the GUI send the correct ONE
 //        Q.AddQuery(Q.Name,Q.UserCountry);
     }
