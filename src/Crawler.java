@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 
 
 public class Crawler implements Runnable{
-	private int maxVisited = 5000;
+	private int maxVisited = 3000;
 	private int maxLinkfromSite = 50;
 	private int maxUnvisited = 20000;
 	private MongoDBAdapter DBAdapeter;
