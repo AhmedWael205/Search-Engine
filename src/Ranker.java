@@ -133,7 +133,7 @@ public class Ranker implements Runnable {
     public static Comparator<URLResult> scoreComparator = new Comparator<URLResult>() {
         @Override
         public int compare(URLResult jc1, URLResult jc2) {
-            return (jc2.score < jc1.score? -1 :
+            return (jc2.score > jc1.score? -1 :
                     (jc2.score == jc1.score ? 0 : 1));
         }
     };
