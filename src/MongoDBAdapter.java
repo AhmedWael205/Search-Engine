@@ -571,18 +571,18 @@ public class MongoDBAdapter {
 
 	public void AddtoQueryCollection(String Name, String UserCountry)
 	{
-		Document found = QueriesCollection.find(Filters.eq("Name",Name)).first();
-		int Freq = 0;
-		if(found == null) {
-			QueriesCollection.insertOne(new Document("Name", Name).append("Freq",0).append("User Country", UserCountry));
-		}
-		else
-		{
-			Freq = (int) found.get("Freq");
-			Document Query = new Document("Name", Name);
-			Document newDoc = new Document("Freq", Freq+1);
-			Document UpdatedDoc = new Document("$set", newDoc);
-			QueriesCollection.updateOne(Query,UpdatedDoc);
+		if(!Name.equals("")) {
+			Document found = QueriesCollection.find(Filters.eq("Name", Name)).first();
+			int Freq = 0;
+			if (found == null) {
+				QueriesCollection.insertOne(new Document("Name", Name).append("Freq", 0).append("User Country", UserCountry));
+			} else {
+				Freq = (int) found.get("Freq");
+				Document Query = new Document("Name", Name);
+				Document newDoc = new Document("Freq", Freq + 1);
+				Document UpdatedDoc = new Document("$set", newDoc);
+				QueriesCollection.updateOne(Query, UpdatedDoc);
+			}
 		}
 	}
 
@@ -612,7 +612,8 @@ public class MongoDBAdapter {
 	public ArrayList<TrendsResult> Trends (String Country)
 	{
 		ArrayList<TrendsResult> Res = new ArrayList<>();
-		ArrayList<Document> found = (ArrayList<Document>) QueriesCollection.find(Filters.eq("User Country", Country));
+		FindIterable<Document> found = QueriesCollection.find(Filters.eq("User Country", Country));
+		found.noCursorTimeout(true);
 		TrendsResult newT = null;
 		for (Document f : found)
 		{
