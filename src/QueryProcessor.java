@@ -121,7 +121,7 @@ public class QueryProcessor {
     }
 
     public void QuerySearch(String Query) {
-
+        AddQuery(Name,UserCountry);
         //TODO 1: Remove the stop words
         SearchPhrase(Query);
 
@@ -187,6 +187,6 @@ public class QueryProcessor {
         Q.QuerySearch(Query);
         //Call Ranker to return URLResults
         //For Right now till the GUI send the correct ONE
-        Q.AddQuery(Q.Name,Q.UserCountry);
+//        Q.AddQuery(Q.Name,Q.UserCountry);
     }
 }
