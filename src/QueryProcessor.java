@@ -182,6 +182,33 @@ public class QueryProcessor {
 
     public ArrayList<TrendsResult> retunTrends(String Country) { return  DBAdapeter.Trends(Country); }
 
+    public void CallRanker (Ranker r)
+    {
+        if(PSRes.size() != 0)
+        {
+            for(QueryResult q : QPRes)
+            {
+//                System.out.println("Hi1 QP");
+                for(PhraseResult p : PSRes)
+                {
+//                    System.out.println("Hi2");
+                    r.calculateScore(q,p);
+                }
+            }
+        }
+        else
+        {
+            for(QueryResult q : QPRes)
+            {
+//                System.out.println("Hi3");
+                r.calculateScore(q,null);
+            }
+        }
+        Collections.sort(r.Pages, new ScoreComparator());
+        //Call Ranker to return URLResults
+        URLResults.addAll(r.Pages);
+    }
+
     public static void main(String args[])
     {
         QueryProcessor Q = new QueryProcessor(false, "Egypt", "Wael");
@@ -191,29 +218,7 @@ public class QueryProcessor {
         String Query = "messi";
         Q.QuerySearch(Query);
         Ranker r = new Ranker(Q.DBAdapeter);
-        if(Q.PSRes.size() != 0)
-        {
-            for(QueryResult q : Q.QPRes)
-            {
-                System.out.println("Hi1 QP");
-                for(PhraseResult p : Q.PSRes)
-                {
-//                    System.out.println("Hi2");
-                    r.calculateScore(q,p);
-                }
-            }
-        }
-        else
-        {
-            for(QueryResult q : Q.QPRes)
-            {
-//                System.out.println("Hi3");
-                r.calculateScore(q,null);
-            }
-        }
-        Collections.sort(r.Pages, new ScoreComparator());
-        //Call Ranker to return URLResults
-        Q.URLResults.addAll(r.Pages);
+        Q.CallRanker(r);
 
 //        for(URLResult url : Q.URLResults)
 //        {
