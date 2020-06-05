@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="C:/Users/EngAh/Downloads/mongo-java-driver-3.12.3.jar"/>
+	<classpathentry kind="lib" path="C:/Users/EngAh/Downloads/jsoup-1.13.1.jar"/>
+	<classpathentry kind="lib" path="C:/Users/EngAh/Downloads/commons-lang3-3.10-bin.zip"/>
+	<classpathentry kind="lib" path="C:/Users/EngAh/Downloads/commons-lang3-3.10/commons-lang3-3.10.jar"/>
+	<classpathentry kind="lib" path="D:/University Materials/CMPN courses/Advanced Programming Techniques/Spring 2020/Project/Crawler/jars/bson-3.12.3.jar"/>
+	<classpathentry kind="lib" path="D:/University Materials/CMPN courses/Advanced Programming Techniques/Spring 2020/Project/Crawler/jars/lucene-snowball-3.0.3.jar"/>
+	<classpathentry kind="lib" path="D:/University Materials/CMPN courses/Advanced Programming Techniques/Spring 2020/Project/Crawler/jars/snowball-stemmer-1.3.0.581.1.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

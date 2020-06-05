@@ -26,7 +26,7 @@ public class Ranker implements Runnable {
         Pages = new ArrayList<>();
     }
 
-    public  double calculateScore(QueryResult queryResult,PhraseResult phraseResult)
+    public  double calculateScore(QueryResult queryResult,PhraseResult phraseResult,String Location)
     {
 
         URLResult result = null;
@@ -44,7 +44,8 @@ public class Ranker implements Runnable {
         calendar.setTime(dateNow);
         calendar.add(Calendar.YEAR,-3);
         Date toCompareWith = calendar.getTime();
-        System.out.println("Updated Date " + formatter.format(toCompareWith));
+//      System.out.println("Updated Date " + formatter.format(toCompareWith));
+        formatter.format(toCompareWith);
 
         if (phraseResult == null || phraseResult.isEmpty()) {
             popularityScore = queryResult.Pop;
@@ -53,7 +54,7 @@ public class Ranker implements Runnable {
             result = new URLResult(queryResult.URL,queryResult.Title,queryResult.Summary,queryResult.pubDate);
 
             //Egypt for now (hard coded)
-            if (queryResult.Geo == "Egypt")
+            if (queryResult.Geo == Location)
                 geoScore=1;
             try {
                 if (!queryResult.pubDate.equals("-1"))
@@ -100,7 +101,7 @@ public class Ranker implements Runnable {
         long totalIndexed1= Indexed.countDocuments();
         long totalIndexed2=totalIndexed1;
         System.out.print(totalIndexed1+ " "+ totalIndexed2);
-        MongoCursor<Document> cursor1 =  Indexed.find(Filters.exists("URL")).iterator();
+        MongoCursor<Document> cursor1 =  Indexed.find(Filters.eq("PopCalc",0)).noCursorTimeout(true).iterator();
 
         double popularityScore;
 
@@ -113,7 +114,7 @@ public class Ranker implements Runnable {
             Document hala1 = cursor1.next();
             String mylink = hala1.get("URL").toString();
             //System.out.print(mylink + "\n");
-            MongoCursor<Document> cursor2  = Indexed.find(Filters.exists("Links")).iterator();
+            MongoCursor<Document> cursor2  = Indexed.find(Filters.exists("Links")).noCursorTimeout(true).iterator();
             for(int k=0 ;k<totalIndexed2;k++)
             {
 
@@ -129,7 +130,8 @@ public class Ranker implements Runnable {
 
             }
 
-             System.out.print(mylink+"   Popularity = "+ popularityScore + " \n");
+            System.out.print(mylink+"   Popularity = "+ popularityScore + " \n");
+            System.out.println("Remaining to calculate: "+Long.toString(totalIndexed2-j));
             this.DB.updatePopularity(mylink,popularityScore);
 
 
@@ -164,7 +166,7 @@ public class Ranker implements Runnable {
 
         for(QueryResult q : Res)
         {
-            ranker.calculateScore(q,null);
+            ranker.calculateScore(q,null,"Egypt");
         }
         Collections.sort(ranker.Pages, new ScoreComparator());
         for(URLResult p : ranker.Pages)

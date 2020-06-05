@@ -1,8 +1,11 @@
 import java.io.*;
 import java.lang.reflect.Array;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.mongodb.*;
 import com.mongodb.client.MongoCursor;
@@ -27,6 +30,7 @@ public class MongoDBAdapter {
 	private MongoCollection<Document> RobotCollection;
 	private MongoCollection<Document> ImagesCollection;
 	private MongoCollection<Document> QueriesCollection;
+	private MongoCollection<Document> CacheCollection;
 	private MongoClientURI uri;
 	private MongoClient mongoClient;
 	private MongoDatabase database;
@@ -63,6 +67,8 @@ public class MongoDBAdapter {
 				  OLDImages.drop();
 				  MongoCollection<Document> OLDQueries = database.getCollection("Queries");
 				  OLDQueries.drop();
+				  MongoCollection<Document> OLDCache = database.getCollection("Cache");
+				  OLDCache.drop();
 			      
 			      // Creating a new Collections
 			      database.createCollection("Unvisited");
@@ -72,6 +78,7 @@ public class MongoDBAdapter {
 				  database.createCollection("URLs");
 				  database.createCollection("Images");
 				  database.createCollection("Queries");
+				  database.createCollection("Cache");
 		      }
 		      
 		      UnvisitedCollection = database.getCollection("Unvisited");
@@ -81,6 +88,7 @@ public class MongoDBAdapter {
 		      URLsCollection = database.getCollection("URLs");
 		      ImagesCollection = database.getCollection("Images");
 		      QueriesCollection = database.getCollection("Queries");
+		      CacheCollection = database.getCollection("Cache");
 		      
 		      if (DropTables) {
 			      //Reading Initial Seed Set from File
@@ -114,16 +122,15 @@ public class MongoDBAdapter {
 	public String getUnvisited() {
 		
 		if (UnvisitedCollection.countDocuments() > 0 ) {
-			Document result = UnvisitedCollection.find(Filters.regex("url", ".*"+".com.*?")).first();
+			Document result = UnvisitedCollection.findOneAndDelete(Filters.regex("url", ".*"+".com.*?"));
 			String url;
 			try{
 				url = result.get("url").toString();
 			}
 			catch (NullPointerException e) {
-				result = UnvisitedCollection.find().first();
+				result = UnvisitedCollection.findOneAndDelete(Filters.regex("url", ".*"));
 				url = result.get("url").toString();	
 			}
-			UnvisitedCollection.deleteOne(Filters.eq("url",url));
 			System.out.println("Removing "+url+" from Unvisited");
 			System.out.println("Remaining unvisited urls: "+UnvisitedCollection.countDocuments());
 			return url;
@@ -220,6 +227,7 @@ public class MongoDBAdapter {
 	}
 	
 	public long visitedCount() {return VisitedCollection.countDocuments();}
+	public long indexedCount() {return URLsCollection.countDocuments();}
 	public long unvisitedCount() {return UnvisitedCollection.countDocuments();}
 	
 	
@@ -262,9 +270,9 @@ public class MongoDBAdapter {
 			
 			
 			if (URL.substring(URL.length() - 1).equals("/"))
-				result = VisitedCollection.find(Filters.eq("URL",URL.substring(0, URL.length() - 1))).first();
+				result = VisitedCollection.find(Filters.eq("url",URL.substring(0, URL.length() - 1))).first();
 			else
-				result = VisitedCollection.find(Filters.eq("URL",URL+"/")).first();
+				result = VisitedCollection.find(Filters.eq("url",URL+"/")).first();
 			
 			if(found > 1)
 			{
@@ -299,15 +307,18 @@ public class MongoDBAdapter {
 		}
 	}
 	
-//	public void removeFromWords(String Url) {
-//		FindIterable<Document> iterable = WordsCollection.find(new BasicDBObject("URLs.Url",Url));
-//		iterable.noCursorTimeout(true);
-//		int count = 0;
-//		for(Document Doc : iterable) {
-//			count = count + 1;
-//		}
-//		System.out.println("Was included in "+Integer.toString(count)+" Words");
-//	}
+	public void SetIndextoValue(int x) {
+		
+		BasicDBObject searchQuery = new BasicDBObject();
+		int y = 1- x;
+		searchQuery.append("Indexed", y);
+
+		BasicDBObject updateQuery = new BasicDBObject();
+		updateQuery.append("$set",	new BasicDBObject().append("Indexed", x));
+
+		VisitedCollection.updateMany(searchQuery, updateQuery);
+
+	}
 	
 	public void indexerPostProcessing() {
 		FindIterable<Document> iterable = URLsCollection.find();
@@ -453,8 +464,9 @@ public class MongoDBAdapter {
 	{
 		System.out.println("Started Calculating IDFs");
 		FindIterable<Document> iterable = WordsCollection.find(Filters.eq("IDF",0));
+//		FindIterable<Document> iterable = WordsCollection.find();
 		iterable.noCursorTimeout(true);
-		MAX_NO_DOC = visitedCount();
+		MAX_NO_DOC = indexedCount();
 		for(Document Doc : iterable)
 		{
 			ArrayList<String> URLS = (ArrayList<String>) Doc.get("URLs");
@@ -572,14 +584,16 @@ public class MongoDBAdapter {
 	public void AddtoQueryCollection(String Name, String UserCountry)
 	{
 		if(!Name.equals("")) {
-			Document found = QueriesCollection.find(Filters.eq("Name", Name)).first();
+			Document found = QueriesCollection.find(Filters.and(Filters.eq("Name", Name),Filters.eq("User Country", UserCountry))).first();
 			int Freq = 0;
 			if (found == null) {
-				QueriesCollection.insertOne(new Document("Name", Name).append("Freq", 0).append("User Country", UserCountry));
+				QueriesCollection.insertOne(new Document("Name", Name).append("Freq", 1).append("User Country", UserCountry));
 			} else {
 				Freq = (int) found.get("Freq");
+//				System.out.println(Freq);
 				Document Query = new Document("Name", Name);
-				Document newDoc = new Document("Freq", Freq + 1);
+				int x = Freq + 1;
+				Document newDoc = new Document("Freq", x);
 				Document UpdatedDoc = new Document("$set", newDoc);
 				QueriesCollection.updateOne(Query, UpdatedDoc);
 			}
@@ -600,15 +614,26 @@ public class MongoDBAdapter {
 	{
 		return URLsCollection;
 	}
+	
+	public void AddFieldPopCalc()
+	{
+		URLsCollection.updateMany(new BasicDBObject(), new BasicDBObject("$set", new BasicDBObject("PopCalc", 0)));
+	}
 
 	public void updatePopularity (String url,double popularityScore)
 	{
+		BasicDBObject updateFields = new BasicDBObject();
+		updateFields.append("Popularity", popularityScore);
+		updateFields.append("PopCalc", 1);
+		BasicDBObject setQuery = new BasicDBObject();
+		setQuery.append("$set", updateFields);
+		
 		Document Query = new Document("URL", url);
-		Document newDoc = new Document("Popularity",popularityScore);
-		Document UpdatedDoc = new Document("$set", newDoc);
-		URLsCollection.updateOne(Query,UpdatedDoc);
+		
+		URLsCollection.updateOne(Query,setQuery);
+		
 	}
-
+	
 	public ArrayList<TrendsResult> Trends (String Country)
 	{
 		ArrayList<TrendsResult> Res = new ArrayList<>();
@@ -623,13 +648,74 @@ public class MongoDBAdapter {
 		Collections.sort(Res, new TrendsComparator());
 		return Res;
 	}
+	
+	public ArrayList<URLResult> getCached (String Query)
+    {
+		Document Found = CacheCollection.find(Filters.eq("query", Query)).first();
+		
+		if (Found == null) return null;
+		ArrayList<URLResult> Res = new ArrayList<>();
+		ArrayList<Document> UrlResults =  (ArrayList<Document>) Found.get("Links");
+		for(Document Link : UrlResults)
+		{
+			String url = (String)Link.get("URL");
+			String Title = (String)Link.get("Title");
+			String Summary = (String)Link.get("Summary");
+			String pubDate = (String)Link.get("pubDate");
+			Res.add(new URLResult(url,Title,Summary,pubDate));
+		}  	
+    	return Res;
+    }
+	
+	public boolean addCache (String Query,ArrayList<URLResult> UrlResult)
+    {
+		Document Found = CacheCollection.find(Filters.eq("query", Query)).first();
+		if(Found != null) return false;
+		
+		Document newCache = new Document("query", Query);
+		ArrayList<Document> URLS = new ArrayList<>();
+		newCache.append("Links", URLS);
+		CacheCollection.insertOne(newCache);
+		
+		BasicDBObject searchQuery = new BasicDBObject();
+		searchQuery.append("query", Query);
+		
+		for(URLResult Url : UrlResult)
+		{
+			BasicDBObject listItem = new BasicDBObject("Links", new BasicDBObject("URL", Url.url).append("Title", Url.Title).append("pubDate", Url.pubDate).append("Summary", Url.Summary));
+			BasicDBObject updateQuery = new BasicDBObject("$push", listItem);
+			CacheCollection.findOneAndUpdate(searchQuery, updateQuery);
+		}
+		
+		
+		return true;
+    }
+
 
 	public static void main( String args[] ) {  
 
 		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
 		DBAdapeter.init(false);
 //		DBAdapeter.deleteRepeatedUrls();
-		DBAdapeter.indexerPostProcessing();
+//		DBAdapeter.indexerPostProcessing();
+//		DBAdapeter.SetIndextoValue(0);
+		DBAdapeter.AddFieldPopCalc();
+		
+//		Object WordLock = new Object();
+//        Object URLLock = new Object();
+//		
+//		LocalTime myObj1;
+//        LocalTime myObj2;
+//        Indexer index = new Indexer(DBAdapeter, WordLock, URLLock);
+//		
+//		myObj1 = LocalTime.now();
+//        System.out.println(myObj1);
+//        
+//        index.FinalizeIDF();
+//
+//        myObj2 = LocalTime.now();
+//        System.out.println(myObj2);
+		
 	}
 
 }

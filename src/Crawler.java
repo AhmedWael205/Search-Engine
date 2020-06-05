@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 
 
 public class Crawler implements Runnable{
-	private int maxVisited = 3000;
+	private int maxVisited = 7500;
 	private int maxLinkfromSite = 50;
 	private int maxUnvisited = 20000;
 	private MongoDBAdapter DBAdapeter;
@@ -103,9 +103,9 @@ public class Crawler implements Runnable{
             	String URL = "false";
             	
             	// Synchronized because we delete it from table after we find it
-            	synchronized (UnvisitedLock) {
+//            	synchronized (UnvisitedLock) {
             		URL = DBAdapeter.getUnvisited();
-            	}
+//            	}
             	long unvisitedCount = DBAdapeter.unvisitedCount();
             	if (URL != "false") {
             		this.addRobots(URL, DBAdapeter);

@@ -456,37 +456,55 @@ public class Indexer implements Runnable
         System.out.println(myObj);
         System.out.println("Running Indexer");
 
-        for (int j = 0; j < ThreadNumbers; j++) {
-            myThreads[j] = new Thread(new Indexer(DBAdapeter, WordLock, URLLock));
-            myThreads[j].start();
-        }
-        for (int j = 0; j < ThreadNumbers; j++) {
-            try {
-                myThreads[j].join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        LocalTime myObj1 = LocalTime.now();
-
-
-        System.out.println(myObj1);
-
-        Indexer index = new Indexer(DBAdapeter, WordLock, URLLock);
-        System.out.println("Done ... Calculating TF-IDF");
-        index.FinalizeIDF();
-
-        LocalTime myObj2 = LocalTime.now();
-        System.out.println(myObj2);
+//        for (int j = 0; j < ThreadNumbers; j++) {
+//            myThreads[j] = new Thread(new Indexer(DBAdapeter, WordLock, URLLock));
+//            myThreads[j].start();
+//        }
+//        for (int j = 0; j < ThreadNumbers; j++) {
+//            try {
+//                myThreads[j].join();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+        
+        LocalTime myObj1;
+        LocalTime myObj2;
+//        Indexer index = new Indexer(DBAdapeter, WordLock, URLLock);
+        
         
         System.out.println("Done ... Running Indexer PostProcessing");
+        
+        myObj1 = LocalTime.now();
+        System.out.println(myObj1);
+        
         DBAdapeter.indexerPostProcessing();
+        
+        myObj2 = LocalTime.now();
+        System.out.println(myObj2);
+     
+        System.out.println("Done ... Calculating TF-IDF");
+        
+//        myObj1 = LocalTime.now();
+//        System.out.println(myObj1);
+//        
+//        index.FinalizeIDF();
+//
+//        myObj2 = LocalTime.now();
+//        System.out.println(myObj2);
+        
         System.out.println("Done ... Calculating Popularity");
-        //Add Calculate Popularity
+        
+        myObj1 = LocalTime.now();
+        System.out.println(myObj1);
+        
         MongoCollection<org.bson.Document> Indexed = DBAdapeter.returnIndexed();
-
         Ranker ranker = new Ranker (DBAdapeter);
         ranker.calculatePopularity(Indexed);
+        
+        myObj2 = LocalTime.now();
+        System.out.println(myObj2);
+        
         System.out.println("Done");
     }
 }

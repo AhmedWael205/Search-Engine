@@ -12,10 +12,6 @@ public class QueryProcessor {
     //Access Words Collection
     private MongoDBAdapter DBAdapeter;
 
-    public boolean ImageSearch;
-    public String UserCountry;
-    public String Name;
-
     public ArrayList<String> StopWords;
     public ArrayList<String> SearchWords;
     public String SearchPhrase;
@@ -26,7 +22,7 @@ public class QueryProcessor {
     public ArrayList<ImageResult> ImageResults;
     public ArrayList<URLResult> URLResults;
 
-    public QueryProcessor(boolean IS, String UC, String N) {
+    public QueryProcessor() {
         boolean Global = false;
         boolean DropTable = false;
         DBAdapeter = new MongoDBAdapter(Global);
@@ -35,9 +31,6 @@ public class QueryProcessor {
         ImageResults = new ArrayList<>();
         URLResults = new ArrayList<>();
         SearchPhrase = "";
-        ImageSearch = IS;
-        UserCountry = UC;
-        Name = N;
         QPRes = new ArrayList<>();
         PSRes = new ArrayList<>();
         ReadStopWords();
@@ -45,7 +38,7 @@ public class QueryProcessor {
 
     public void ReadStopWords() {
         StopWords = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader((".\\StopWords.txt")))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(("D:/Downloads/Programfiles/Eclipse/SearchEngine/StopWords.txt")))) {
             while (reader.ready()) {
                 StopWords.add(reader.readLine());
             }
@@ -97,8 +90,8 @@ public class QueryProcessor {
             SearchPhrase = m.group();
         }
         SearchPhrase = SearchPhrase.replaceAll("([^a-zA-Z ])", "");
-        System.out.println(SearchPhrase);
-        System.out.println(SearchWords);
+//        System.out.println(SearchPhrase);
+//        System.out.println(SearchWords);
     }
 
     public ArrayList<String> URLs(String Word)
@@ -124,7 +117,7 @@ public class QueryProcessor {
             return null;
     }
 
-    public void QuerySearch(String Query) {
+    public void QuerySearch(String Query,boolean ImageSearch, String UserCountry, String Name) {
         AddQuery(Name,UserCountry);
         //TODO 1: Remove the stop words
         SearchPhrase(Query);
@@ -168,6 +161,9 @@ public class QueryProcessor {
                 ImageResults.addAll(SearchImagesInDB(word));
             }
         }
+        
+        Ranker r = new Ranker(DBAdapeter);
+        CallRanker(r,Query,UserCountry);
     }
 
     public ArrayList<ImageResult> SearchImagesInDB(String Word)
@@ -182,7 +178,7 @@ public class QueryProcessor {
 
     public ArrayList<TrendsResult> retunTrends(String Country) { return  DBAdapeter.Trends(Country); }
 
-    public void CallRanker (Ranker r)
+    public void CallRanker (Ranker r,String Query,String UserCountry)
     {
         if(PSRes.size() != 0)
         {
@@ -192,7 +188,7 @@ public class QueryProcessor {
                 for(PhraseResult p : PSRes)
                 {
 //                    System.out.println("Hi2");
-                    r.calculateScore(q,p);
+                    r.calculateScore(q,p,UserCountry);
                 }
             }
         }
@@ -201,7 +197,7 @@ public class QueryProcessor {
             for(QueryResult q : QPRes)
             {
 //                System.out.println("Hi3");
-                r.calculateScore(q,null);
+                r.calculateScore(q,null,UserCountry);
             }
         }
         Collections.sort(r.Pages, new ScoreComparator());
@@ -211,19 +207,19 @@ public class QueryProcessor {
 
     public static void main(String args[])
     {
-        QueryProcessor Q = new QueryProcessor(false, "Egypt", "Wael");
+        QueryProcessor Q = new QueryProcessor();
 //        System.out.println("Please enter a Query to search for");
 //        Scanner sc= new Scanner(System.in);
 //        String Query = sc.nextLine();
         String Query = "messi";
-        Q.QuerySearch(Query);
-        Ranker r = new Ranker(Q.DBAdapeter);
-        Q.CallRanker(r);
+        Q.QuerySearch(Query,false, "Egypt", "Wael");
+//        Ranker r = new Ranker(Q.DBAdapeter);
+//        Q.CallRanker(r);
 
-//        for(URLResult url : Q.URLResults)
-//        {
-//            System.out.println(url.url + " " + url.score);
-//        }
+        for(URLResult url : Q.URLResults)
+        {
+            System.out.println(url.url + " " + url.score);
+        }
         //For Right now till the GUI send the correct ONE
 //        Q.AddQuery(Q.Name,Q.UserCountry);
     }
