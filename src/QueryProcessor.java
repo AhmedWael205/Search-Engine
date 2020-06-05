@@ -2,9 +2,7 @@ import org.tartarus.snowball.ext.PorterStemmer;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Scanner;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,7 +36,7 @@ public class QueryProcessor {
 
     public void ReadStopWords() {
         StopWords = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(("D:/Downloads/Programfiles/Eclipse/SearchEngine/StopWords.txt")))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader((".//StopWords.txt")))) {
             while (reader.ready()) {
                 StopWords.add(reader.readLine());
             }
@@ -109,7 +107,7 @@ public class QueryProcessor {
         return DBAdapeter.QueryProcessorRes(Word, URL, IDF);
     }
 
-    public ArrayList<PhraseResult> PhraseResult(ArrayList<String> URLs)
+    public ArrayList<PhraseResult> PhraseResult(Set<String> URLs)
     {
         if(SearchPhrase != "")
             return DBAdapeter.PhraseSearchRes(SearchPhrase, URLs);
@@ -129,17 +127,20 @@ public class QueryProcessor {
         Stem(StemmedQ);
         //TODO 3: Search the DB in URL Collection for the stemmed word and Return the IDF and TF and URL of the words
         //Word Search
-        ArrayList<String> WordSearchUrls = new ArrayList<>();
-        ArrayList<String> PhraseSearchUrls = new ArrayList<>();
+        Set<String> WordSearchUrls = new HashSet<>();
+        Set<String> PhraseSearchUrls = new HashSet<>();
         double IDF;
         if(!ImageSearch) {
             for (String word : StemmedQ) {
 //                WordSearchUrls.clear();
                 IDF = RetIDF(word);
                 if (IDF != 10000000) {
-                    WordSearchUrls.addAll(URLs(word));
-                    if (SearchPhrase.contains(word)) {
+                    if (SearchPhrase.toLowerCase().contains(word)) {
                         PhraseSearchUrls.addAll(URLs(word));
+                    }
+                    else
+                    {
+                        WordSearchUrls.addAll(URLs(word));
                     }
                     for (String url : WordSearchUrls) {
                         QPRes.add(QPSearch(word, url, IDF));
@@ -149,9 +150,13 @@ public class QueryProcessor {
                     break;
                 }
             }
+            //Remove Duplicates from QPReswDup
+
             //TODO 4: Phrase Search
             if(PhraseResult(PhraseSearchUrls) != null)
                 PSRes.addAll(PhraseResult(PhraseSearchUrls));
+
+
 //            System.out.println(PSRes.get(0).URL);
 //            System.out.println(PSRes.size());
         }
@@ -208,18 +213,19 @@ public class QueryProcessor {
     public static void main(String args[])
     {
         QueryProcessor Q = new QueryProcessor();
-//        System.out.println("Please enter a Query to search for");
-//        Scanner sc= new Scanner(System.in);
-//        String Query = sc.nextLine();
-        String Query = "messi";
+        System.out.println("Please enter a Query to search for");
+        Scanner sc= new Scanner(System.in);
+        String Query = sc.nextLine();
+//        String Query = "messi";
         Q.QuerySearch(Query,false, "Egypt", "Wael");
 //        Ranker r = new Ranker(Q.DBAdapeter);
 //        Q.CallRanker(r);
-
-        for(URLResult url : Q.URLResults)
-        {
-            System.out.println(url.url + " " + url.score);
-        }
+//        System.out.println(Q.QPRes.size());
+//        System.out.println(Q.PSRes.size());
+//        for(URLResult url : Q.URLResults)
+//        {
+//            System.out.println(url.url + " " + url.score);
+//        }
         //For Right now till the GUI send the correct ONE
 //        Q.AddQuery(Q.Name,Q.UserCountry);
     }

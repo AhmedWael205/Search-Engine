@@ -539,7 +539,7 @@ public class MongoDBAdapter {
 		return new QueryResult(Word,BTF,H1TF,H2TF,H3TF,H4TF,H5TF,H6TF,PTF,IDF,URL,Title,Summary,Geo,Pop, pubDate);
 	}
 
-	public ArrayList<PhraseResult> PhraseSearchRes(String SearchPhrase, ArrayList<String> URLs)
+	public ArrayList<PhraseResult> PhraseSearchRes(String SearchPhrase, Set<String> URLs)
 	{
 		ArrayList<PhraseResult> Res = new ArrayList<>();
 		for(String url: URLs)
