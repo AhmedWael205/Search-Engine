@@ -51,13 +51,15 @@ public class QueryProcessor {
         SearchWords.clear();
         for (String w : SW)
         {
-            w = w.toLowerCase();
-            w = w.replaceAll("([^a-z])", "");
-            if (!StopWords.contains(w))
-            {
-                SearchWords.add(w);
+            if (!w.isBlank()) {
+                w = w.toLowerCase();
+                w = w.replaceAll("([^a-z])", "");
+                if (!StopWords.contains(w)) {
+                    SearchWords.add(w);
+                }
             }
         }
+//        System.out.println(SearchWords);
     }
 
     public void Stem(ArrayList<String> StemmedQuery) {
@@ -78,16 +80,20 @@ public class QueryProcessor {
         String [] QueryArray = Query.split(" ");
         for(String W : QueryArray)
         {
-            SearchWords.add(W.replaceAll("([^a-zA-Z ])", ""));
+            SearchWords.add(W.replaceAll("([^a-zA-Z])", ""));
         }
-        String pattern = "\"([^\"]*)\"";
+        String pattern = "\"(\\s*)([^\"]*)(\\s*)\"";
         Pattern r = Pattern.compile(pattern);
         Matcher m = r.matcher(Query);
         if(m.find())
         {
-            SearchPhrase = m.group();
+            SearchPhrase = m.group(2);
         }
         SearchPhrase = SearchPhrase.replaceAll("([^a-zA-Z ])", "");
+        if(SearchPhrase.startsWith("\\s"))
+        {
+            SearchPhrase = SearchPhrase.substring(1, SearchPhrase.length());
+        }
 //        System.out.println(SearchPhrase);
 //        System.out.println(SearchWords);
     }
@@ -133,22 +139,23 @@ public class QueryProcessor {
         if(!ImageSearch) {
             for (String word : StemmedQ) {
 //                WordSearchUrls.clear();
+//                System.out.println(word);
                 IDF = RetIDF(word);
                 if (IDF != 10000000) {
                     if (SearchPhrase.toLowerCase().contains(word)) {
                         PhraseSearchUrls.addAll(URLs(word));
-                    }
-                    else
-                    {
+                    } else {
                         WordSearchUrls.addAll(URLs(word));
                     }
                     for (String url : WordSearchUrls) {
                         QPRes.add(QPSearch(word, url, IDF));
                     }
                 } else {
+                    System.out.println(word);
                     System.out.println("Word doesn't exist in any Document Indexed!");
                     break;
                 }
+
             }
             //Remove Duplicates from QPReswDup
 
@@ -187,14 +194,15 @@ public class QueryProcessor {
     {
         if(PSRes.size() != 0)
         {
+            for(PhraseResult p : PSRes)
+            {
+//                    System.out.println("Hi2");
+                r.calculateScore(null,p,UserCountry);
+            }
             for(QueryResult q : QPRes)
             {
 //                System.out.println("Hi1 QP");
-                for(PhraseResult p : PSRes)
-                {
-//                    System.out.println("Hi2");
-                    r.calculateScore(q,p,UserCountry);
-                }
+                r.calculateScore(q,null,UserCountry);
             }
         }
         else

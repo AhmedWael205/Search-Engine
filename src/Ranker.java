@@ -68,7 +68,7 @@ public class Ranker implements Runnable {
             }
         }
         else {
-            relevanceScore =  phraseResult.TF ;
+            relevanceScore =  1000 ;
             popularityScore = phraseResult.Pop;
             result = new URLResult(phraseResult.URL,phraseResult.Title,phraseResult.Summary,phraseResult.pubDate);
 
