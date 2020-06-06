@@ -97,7 +97,7 @@ public class MongoDBAdapter {
 				  Document docTemp;
 				  System.out.println("Initiallizing Seed Set with ...");
 				  try {
-						reader = new BufferedReader(new FileReader((".\\SeedSet.txt")));
+						reader = new BufferedReader(new FileReader(("./resources/SeedSet.txt")));
 						String line = reader.readLine();
 						while (line != null) {
 							line = line.replaceAll("[^:]//", "/").toLowerCase();
@@ -651,7 +651,9 @@ public class MongoDBAdapter {
 	
 	public ArrayList<URLResult> getCached (String Query)
     {
-		Document Found = CacheCollection.find(Filters.eq("query", Query)).first();
+		BasicDBObject ref = new BasicDBObject();
+		ref.put("query", Pattern.compile(Query, Pattern.CASE_INSENSITIVE));
+		Document Found = CacheCollection.find(ref).first();
 		
 		if (Found == null) return null;
 		ArrayList<URLResult> Res = new ArrayList<>();
@@ -694,12 +696,12 @@ public class MongoDBAdapter {
 
 	public static void main( String args[] ) {  
 
-		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
-		DBAdapeter.init(false);
+//		MongoDBAdapter DBAdapeter = new MongoDBAdapter(false);
+//		DBAdapeter.init(false);
 //		DBAdapeter.deleteRepeatedUrls();
 //		DBAdapeter.indexerPostProcessing();
 //		DBAdapeter.SetIndextoValue(0);
-		DBAdapeter.AddFieldPopCalc();
+//		DBAdapeter.AddFieldPopCalc();
 		
 //		Object WordLock = new Object();
 //        Object URLLock = new Object();
@@ -715,6 +717,64 @@ public class MongoDBAdapter {
 //
 //        myObj2 = LocalTime.now();
 //        System.out.println(myObj2);
+		ArrayList<String>StopWords = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(("./resources/StopWords.txt")))) {
+            while (reader.ready()) {
+                StopWords.add(reader.readLine());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+		String query = "\" messi on Car\"";
+		ArrayList<String>SearchWords = new ArrayList<>();
+		String SearchPhrase = "";
+		
+		String [] QueryArray = query.split(" ");
+        for(String W : QueryArray)
+        {
+            SearchWords.add(W.replaceAll("([^a-zA-Z ])", ""));
+        }
+        String pattern = "\"([^\"]*)\"";
+        Pattern r1 = Pattern.compile(pattern);
+        Matcher m2 = r1.matcher(query);
+        if(m2.find())
+        {
+            SearchPhrase = m2.group();
+        }
+        SearchPhrase = SearchPhrase.replaceAll("([^a-zA-Z ])", "").trim();
+        System.out.println(SearchPhrase);
+        System.out.println(SearchWords);
+        ArrayList<String> SW = new ArrayList<>(SearchWords);
+        SearchWords.clear();
+        String toReplace = "|(";
+//        String 
+        for (String w : SW)
+        {
+            w = w.replaceAll("([^a-zA-Z])", "");
+            if (!StopWords.contains(w) && w.length() >1)
+            {
+            	toReplace = toReplace + w + ")|(";
+            }
+        }
+        toReplace = toReplace.substring(0, toReplace.length()-2);
+        String x = SearchPhrase + toReplace;
+        System.out.println(x);
+        String z = x.substring(x.indexOf("|")+1,x.length()).trim();
+        if(SearchPhrase=="")
+        	x = z;
+        System.out.println(z);
+        
+		int N = 40;
+		
+
+		Pattern p = Pattern.compile("((([a-zA-Z1234567890&(),@_':\\\"\\-]*\\s+){1,"+Integer.toString(N)+"}))?(?i)("+x+"[,:]?)\\s*((([a-zA-Z1234567890&()@_,':\\\"\\-]*\\s+){1,"+Integer.toString(N)+"}))?");
+		Matcher m = p.matcher("Premier League Transfers Champions FanVoice The Switch EFL La Liga Serie A Bundesliga MLS Women's Football More EN EN ES ES-LATAM DE IT FR TR PT-BR VN ID TH Premier League Transfers Champions FanVoice The Switch EFL La Liga Serie A Bundesliga MLS Women's Football Liverpool vs Everton: The 'Friendly' Derby That Is More Important Than Just Football Ewan Murray | 2:00 PM GMT+1 Liverpool vs Everton: 6 Classic Merseyside Derby Clashes Ewan Murray | 3:45 PM GMT+1 Liverpool vs Everton: A Combined XI of Merseyside Derby Stars Ewan Murray | 3:47 PM GMT+1 Main Stories 8 of Football's Bright Young Talents Inspired by Magician Ronaldinho Grey Whitebloom | 1:06 PM GMT+1 Mikel Arteta Preparing to 'Initiate' Talks With Arsenal Captain Pierre-Emerick Aubameyang Adam Aladay | 12:25 PM GMT+1 5 Barcelona Players Tested Positive for Coronavirus Early in Pandemic Tom Gott | 10:13 AM GMT+1 Ralph Hasenhüttl Signs New Four-Year Contract at Southampton Tom Gott | 9:57 AM GMT+1 FA Pledges 'Common Sense' Approach to Dealing With Black Lives Matter Gestures in Premier League Tom Gott | 3:49 PM GMT+1 FanVoice Philippe Coutinho: Which Premier League Club Would Suit the Brazilian Best? Adam Aladay | 3:21 PM GMT+1 Sergio Aguero: Still Manchester City's Go-to Superstar After All These Years Robbie Walls | 11:31 AM GMT+1 9 English Players Who Have Scored Hat-tricks in Other Leagues Robbie Copeland | Jun 1, 2020 Why Casemiro Is Real Madrid's Most Important Player in the Post-Galacticos Era Josh Sim | Jun 1, 2020 Harvey Elliott: Liverpool's Little Diamond Who Has a Big Role to Play at Anfield Robbie Copeland | Jun 1, 2020 Editor's Picks Liverpool vs Everton: A Combined XI of Merseyside Derby Stars Ewan Murray | 3:47 PM GMT+1 Liverpool vs Everton: 6 Classic Merseyside Derby Clashes Ewan Murray | 3:45 PM GMT+1 Liverpool vs Everton: The 'Friendly' Derby That Is More Important Than Just Football Ewan Murray | 2:00 PM GMT+1 Ajax vs Feyenoord: 5 Classic Encounters From Dutch Football's Klassieker James Cormack | Jun 1, 2020 Ajax vs Feyenoord: The Netherlands' Klassieker Rooted in City Pride & Resentful Rotterdamers James Cormack | Jun 1, 2020 Inter vs Juventus: 6 of the Best Games in the Derby d'Italia's History Josh Sim | May 29, 2020 Premier League Tottenham Boss José Mourinho Sanctions Danny Rose Loan Extension at Newcastle United The extension of Danny Rose's loan spell from Tottenham to Newcastle United has been approved by José Mourinho Grey Whitebloom | 2:22 PM GMT+1 The Paused Premier League Narratives to Keep Your Eyes on When Football Returns Premier League narratives to remember for when football returns, including Liverpool's pursuit of records, Sheffield United's Champions League run & more Tom Gott | 12:21 PM GMT+1 Premier League Project Restart: Bigger Benches, Fewer Neutral Games Than Expected, In-Game Interviews & More Project restart Premier League news. Neutral venues, coronavirus health and safety measures. Jamie Spencer | 11:09 AM GMT+1 Ralph Hasenhüttl Signs New Four-Year Contract at Southampton Southampton confirm manager Ralph Hasenhuttl has signed a new four-year contract Tom Gott | 9:57 AM GMT+1 Chelsea Submit Proposal to Increase Number of Premier League Substitutes to Nine Chelsea propose allowing nine substitutes ahead of Premier League's return Ali Rampling | Jun 1, 2020 Kick It Out Chief Urges All Premier League Players to Take a Knee Over George Floyd Killing Kick It Out urges players to take a knee in protest of George Floyd's killing and in support of Black Lives Matter Ali Rampling | Jun 1, 2020 Transfers Mikel Arteta Preparing to 'Initiate' Talks With Arsenal Captain Pierre-Emerick Aubameyang Mikel Arteta will attempt to convince Pierre-Emerick Aubameyang to commit his future to Arsenal and sign a new deal. Adam Aladay | 12:25 PM GMT+1 Spurs Interested in Rennes Striker M'Baye Niang as Harry Kane Backup Tottenham Hotspor set to open talks for Rennes forward M'Baye Niang Robbie Walls | 11:50 AM GMT+1 Liverpool Agree to Extend Harry Wilson & Rhian Brewster Loans Until End of Season Liverpool have agreed to let Harry Wilson and Rhian Brewster finish the 2019/20 season with their loan clubs. Adam Aladay | 10:04 AM GMT+1 Marcus Rashford 'Said Yes' to Barcelona Before Backing Out of Move Marcus Rashford transfer news latest - Barcelona. Manchester United future uncertain in 2018 and 2019. Camp Nou talks. Jamie Spencer | 9:55 AM GMT+1 Chelsea 'Likely' to Make 2 Marquee Signings - Ben Chilwell Still a Priority Chelsea are plotting two marquee signings this summer, with Leicester City's Ben Chilwell a top priority alongside Jadon Sancho & Kai Havertz Tom Gott | 8:44 AM GMT+1 Arsenal Ready to Offer New Contract to David Luiz on Reduced Terms Arsenal are ready to offer David Luiz a new contract on less than his current £130,000-a-week. Tom Gott | 8:33 AM GMT+1 How Much Man Utd Will Pay for Odion Ighalo Loan Extension Manchester United pay £6m to Shanghai Shenhua in loan deal for Odion Ighalo Ali Rampling | Jun 1, 2020 Manchester United Would 'Go For' Raheem Sterling Should Manchester City Star Become Available Manchester United would move for Raheem Sterling if Manchester City winger became available Ali Rampling | Jun 1, 2020 Jeff Hendrick Link to AC Milan Confirms 2020 Is the Weirdest Football Year Ever Burnley's Jeff Hendrick has been linked with AC Milan. Robbie Copeland | Jun 1, 2020 The Switch Nike Football Drop The 'Neighbourhood Pack' Hunter Godson | Jun 1, 2020 New Leaks Appear to Confirm Manchester United 'Dazzle Camo' Third Kit for 2020/21 Robbie Copeland | Jun 1, 2020 Images of Striking Arsenal 2020/21 Away Kit Leaked Online Ali Rampling | May 28, 2020 Fresh Leaks of Manchester United's 2020/21 Home Kit Emerge & it's a Winner James Cormack | May 27, 2020 Nike Drop Striking New Club América Away Shirt Inspired by Glory Days of 1980s Krishan Davis | May 26, 2020 adidas Football Drop UNIFORIA Boot Pack Hunter Godson | May 26, 2020 Women's Football An Ode to Arsenal Women's Serial Winners of the Noughties Ali Rampling | Jun 1, 2020 FA Backing New English Women’s Football Archive Available for Free Online FA backs English women's football archive. Free online archive telling the story of women's football in England. Jamie Spencer | Jun 1, 2020 The England Women's Job Deserves to Be More Than the Launch Pad Phil Neville Used it for The England Women's job deserved to be more than the stepping stone that Phil Neville used it as Ali Rampling | May 28, 2020 6 Things to Know About New Manchester City Women's Boss Gareth Taylor Who is Manchester City Women's new manager Gareth Taylor? Ali Rampling | May 28, 2020 90min - Ranked The 100 Highest-Paid Athletes in 2020 - Ranked The 100 highest paid athletes in the world, including Roger Federer, Cristiano Ronaldo, Lionel Messi, Neymar, Kylian Mbappe, Mohamed Salah & Paul Pogba Tom Gott | May 31, 2020 The 20 Most Valuable Football Clubs in Europe - Ranked The 20 most valuable clubs in Europe including Real Madrid, Barcelona, Manchester United and Liverpool with other Premier League sides Ross Kennerley | May 29, 2020 The 10 Worst Serie A Kits of the Past Decade - Ranked Ranking 10 of the worst Serie A kits over the past decade Lee Bushe | May 28, 2020 Every PFA Young Player of the Year Winner Between 2000-2010 - Ranked Callum Altimas | May 31, 2020 LINKS About Privacy Policy Cookie Policy Contact Us Careers Partners Terms & Conditions FOLLOW US Minute Media © 2020 All rights reserved");
+		if (m.find())
+		 {
+		 	String y = m.group();
+		 	System.out.println(y.replaceAll("(?i)("+z+")", "<b>$0</b>"));
+		
+		 }
 		
 	}
 

@@ -86,7 +86,7 @@ public class Indexer implements Runnable
     public void ReadStopWords()
     {
         StopWords = new ArrayList<>();
-        try(BufferedReader reader = new BufferedReader(new FileReader((".\\StopWords.txt")))){
+        try(BufferedReader reader = new BufferedReader(new FileReader(("./resources/StopWords.txt")))){
             while(reader.ready())
             {
                 StopWords.add(reader.readLine());
@@ -101,7 +101,7 @@ public class Indexer implements Runnable
         GeoWords = new ArrayList<>();
         URLExtension = new ArrayList<>();
         Countries = new ArrayList<>();
-        try(BufferedReader reader = new BufferedReader(new FileReader((".\\Geo.txt")))){
+        try(BufferedReader reader = new BufferedReader(new FileReader(("./resources/Geo.txt")))){
             while(reader.ready())
             {
                 GeoWords.add(reader.readLine());

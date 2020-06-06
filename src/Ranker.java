@@ -44,7 +44,7 @@ public class Ranker implements Runnable {
         calendar.setTime(dateNow);
         calendar.add(Calendar.YEAR,-3);
         Date toCompareWith = calendar.getTime();
-//      System.out.println("Updated Date " + formatter.format(toCompareWith));
+//        System.out.println("Updated Date " + formatter.format(toCompareWith));
         formatter.format(toCompareWith);
 
         if (phraseResult == null || phraseResult.isEmpty()) {
@@ -64,18 +64,18 @@ public class Ranker implements Runnable {
                         updateScore = 1;
                 }
             } catch (ParseException e) {
-                e.printStackTrace();
+//                e.printStackTrace();
             }
         }
         else {
-            relevanceScore =  1000 ;
+            relevanceScore =  3000 ; ;
             popularityScore = phraseResult.Pop;
             result = new URLResult(phraseResult.URL,phraseResult.Title,phraseResult.Summary,phraseResult.pubDate);
 
 
 
 
-            if (phraseResult.Geo == "Egypt")
+            if (phraseResult.Geo == Location)
                 geoScore=1;
             try {
                 if (!phraseResult.pubDate.equals("-1"))

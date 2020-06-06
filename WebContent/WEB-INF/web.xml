@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://xmlns.jcp.org/xml/ns/javaee" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd" id="WebApp_ID" version="4.0">
+  <display-name>SearchEngine</display-name>
+	<servlet>
+		<servlet-name>SearchHandler</servlet-name>
+		<servlet-class>searchQuery</servlet-class>
+  	</servlet>
+  
+
+	<servlet-mapping>
+		<servlet-name>SearchHandler</servlet-name>
+		<url-pattern>/SearchResult</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>TrendsHandler</servlet-name>
+		<servlet-class>Trends</servlet-class>
+  	</servlet>
+  
+
+	<servlet-mapping>
+		<servlet-name>TrendsHandler</servlet-name>
+		<url-pattern>/Trends</url-pattern>
+	</servlet-mapping>
+
+</web-app>

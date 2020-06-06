@@ -36,7 +36,7 @@ public class QueryProcessor {
 
     public void ReadStopWords() {
         StopWords = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader((".//StopWords.txt")))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(("./resources/StopWords.txt")))) {
             while (reader.ready()) {
                 StopWords.add(reader.readLine());
             }
@@ -51,7 +51,7 @@ public class QueryProcessor {
         SearchWords.clear();
         for (String w : SW)
         {
-            if (!w.isBlank()) {
+            if (!w.isEmpty()) {
                 w = w.toLowerCase();
                 w = w.replaceAll("([^a-z])", "");
                 if (!StopWords.contains(w)) {

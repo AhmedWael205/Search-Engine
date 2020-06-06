@@ -1,5 +1,4 @@
-.idea
-*.log
-*.class
-*.iml
-/out
+build
+.settings
+.project
+.classpath
